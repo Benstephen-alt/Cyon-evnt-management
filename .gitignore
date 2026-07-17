@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+
+# Build Output
+dist/
+
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Prisma
+prisma/dev.db
+prisma/dev.db-journal
+
+# Uploads
+uploads/delegates/*
+uploads/receipts/*
+uploads/badges/*
+
+# Keep upload folders
+!uploads/delegates/.gitkeep
+!uploads/receipts/.gitkeep
+!uploads/badges/.gitkeep
+
+# Coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Temporary Files
+tmp/
+temp/
+.cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint Cache
+.eslintcacheS
+

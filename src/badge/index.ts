@@ -1,0 +1,1 @@
+export { default as badgeRoutes } from "./badge.routes";

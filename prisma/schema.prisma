@@ -1,0 +1,912 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////////
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  PARISH
+  COMMITTEE
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExpenseCategory {
+  FOOD
+  TRANSPORT
+  ACCOMMODATION
+  MEDICAL
+  PUBLICITY
+  PRINTING
+  EQUIPMENT
+  LABOUR
+  FUEL
+  UTILITY
+  MISC
+}
+
+enum ReceiptType {
+  RECEIPT
+  CASH
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum AttendanceStatus {
+  NOT_ARRIVED
+  ARRIVED
+}
+
+enum ComplaintStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum CommitteePermission {
+  SCAN_PARISH
+
+  CONFIRM_PARISH_ARRIVAL
+
+  SCAN_DELEGATE
+
+  CHECKIN_DELEGATE
+
+  ALLOCATE_ACCOMMODATION
+
+  MOVE_ACCOMMODATION
+
+  REGISTER_DELEGATE
+
+  EDIT_DELEGATE
+
+  VERIFY_PAYMENT
+
+  APPROVE_PAYMENT
+
+  VIEW_REPORTS
+
+  CREATE_BUDGET
+
+  UPDATE_BUDGET
+
+  DELETE_BUDGET
+
+  VIEW_FINANCE_DASHBOARD
+
+  CREATE_FUND_RELEASE
+
+  VIEW_FUND_RELEASES
+
+  DELETE_FUND_RELEASE
+
+  CREATE_EXPENSE
+
+  VIEW_EXPENSES
+
+  UPDATE_EXPENSE
+
+  DELETE_EXPENSE
+}
+
+enum FundReleaseAuthority {
+  DIOCESAN_PRESIDENT
+  GENERAL_COMMITTEE_CHAIRMAN
+  CHAPLAIN
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum IncomeSource {
+  PARISH_REGISTRATION
+
+  VENDOR_REGISTRATION
+
+  DONATION
+
+  SPONSORSHIP
+
+  OTHER
+}
+
+enum VendorCategory {
+  FOOD
+  DRINKS
+  CLOTHING
+  RELIGIOUS_ITEMS
+  BOOKS
+  ELECTRONICS
+  SERVICES
+  AGRICULTURE
+  CRAFTS
+  HEALTH_BEAUTY
+  POS
+  PROVISIONS
+  OTHER
+}
+
+//////////////////////////////////////////////////////////
+// USER
+//////////////////////////////////////////////////////////
+
+model User {
+  id String @id @default(uuid())
+
+  email        String? @unique
+  loginId      String? @unique
+  passwordHash String
+
+  role UserRole
+
+  isActive Boolean @default(true)
+
+  lastLogin DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admin Admin?
+
+  parishAccount ParishAccount?
+
+  committeeMember CommitteeMember?
+
+  accommodationAllocations Accommodation[]
+
+  announcements Announcement[]
+
+  incomeRecords IncomeRecord[]
+
+  auditLogs AuditLog[]
+
+  searchHistory SearchHistory[]
+
+  parishArrivalsChecked ParishArrival[]
+
+  delegateCheckIns Delegate[] @relation("DelegateCheckIn")
+
+  fundReleases FundRelease[] @relation("FundReleasedBy")
+
+  committeeAssignmentsCreated CommitteeAssignment[] @relation("CommitteeAssignmentBy")
+  delegateDrafts              DelegateDraft[]
+  vendors                     Vendor[]
+}
+
+//////////////////////////////////////////////////////////
+// ADMIN
+//////////////////////////////////////////////////////////
+
+model Admin {
+  id String @id @default(uuid())
+
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName String
+
+  phoneNumber String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+//////////////////////////////////////////////////////////
+// EVENT
+//////////////////////////////////////////////////////////
+
+model Event {
+  id String @id @default(uuid())
+
+  eventName String
+
+  theme String?
+
+  year Int
+
+  registrationFee Decimal @db.Decimal(12, 2)
+
+  startDate DateTime
+
+  endDate DateTime
+
+  registrationOpen Boolean @default(true)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  deaneries Deanery[]
+
+  parishAccounts ParishAccount[]
+
+  committees Committee[]
+
+  budgets Budget[]
+
+  incomeRecords IncomeRecord[]
+
+  fundReleases FundRelease[]
+
+  expenses Expense[]
+
+  delegates Delegate[]
+
+  hostels Hostel[]
+
+  parishArrivals ParishArrival[]
+
+  delegateRegistrationDeadline DateTime?
+
+  announcements Announcement[]
+
+  complaints     Complaint[]
+  delegateDrafts DelegateDraft[]
+  vendors        Vendor[]
+}
+
+//////////////////////////////////////////////////////////
+// DEANERY
+//////////////////////////////////////////////////////////
+
+model Deanery {
+  id String @id @default(uuid())
+
+  name String
+
+  eventId String
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  parishes       Parish[]
+  delegates      Delegate[]
+  delegateDrafts DelegateDraft[]
+
+  @@unique([eventId, name])
+}
+
+//////////////////////////////////////////////////////////
+// PARISH
+//////////////////////////////////////////////////////////
+
+model Parish {
+  id String @id @default(uuid())
+
+  parishCode String @unique
+
+  parishName String
+
+  deaneryId String
+  deanery   Deanery @relation(fields: [deaneryId], references: [id], onDelete: Cascade)
+
+  accessCode String @unique
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  parishAccounts ParishAccount[]
+
+  delegates Delegate[]
+
+  complaints Complaint[]
+
+  arrivals       ParishArrival[]
+  delegateDrafts DelegateDraft[]
+
+  @@unique([deaneryId, parishName])
+}
+
+//////////////////////////////////////////////////////////
+// PARISH ACCOUNT
+//////////////////////////////////////////////////////////
+
+model ParishAccount {
+  id String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  parishId String
+  parish   Parish @relation(fields: [parishId], references: [id], onDelete: Cascade)
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  accessCodeHash String
+
+  presidentName String
+
+  presidentPhoneNumber String
+
+  paymentStatus PaymentStatus @default(PENDING)
+
+  registrationStatus RegistrationStatus @default(PENDING)
+
+  receiptUrl String?
+
+  approvedAt DateTime?
+
+  isActivated Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  delegateSubmissionLocked Boolean @default(false)
+
+  @@unique([parishId, eventId])
+}
+
+model DelegateDraft {
+  id String @id @default(uuid())
+
+  fullName String
+  gender   Gender
+
+  age         Int?
+  phoneNumber String
+
+  photoUrl String
+
+  parishId String
+  parish   Parish @relation(fields: [parishId], references: [id], onDelete: Cascade)
+
+  deaneryId String
+  deanery   Deanery @relation(fields: [deaneryId], references: [id], onDelete: Cascade)
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdByUserId String
+  createdBy       User   @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parishId])
+  @@index([eventId])
+}
+
+//////////////////////////////////////////////////////////
+// COMMITTEE
+//////////////////////////////////////////////////////////
+
+model Committee {
+  id String @id @default(uuid())
+
+  committeeName String
+
+  description String?
+
+  permissions CommitteePermission[]
+
+  assignments CommitteeAssignment[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt    DateTime      @updatedAt
+  event        Event?        @relation(fields: [eventId], references: [id])
+  eventId      String
+  budgets      Budget[]
+  fundReleases FundRelease[]
+  expenses     Expense[]
+
+  @@unique([eventId, committeeName])
+}
+
+//////////////////////////////////////////////////////////
+// COMMITTEE MEMBER
+//////////////////////////////////////////////////////////
+
+model CommitteeMember {
+  id String @id @default(uuid())
+
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isActive Boolean @default(true)
+
+  assignments CommitteeAssignment[]
+
+  accommodations Accommodation[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt    DateTime      @updatedAt
+  fundReleases FundRelease[]
+  expenses     Expense[]
+}
+
+model CommitteeAssignment {
+  id String @id @default(uuid())
+
+  committeeId String
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+
+  committeeMemberId String
+
+  committeeMember CommitteeMember @relation(fields: [committeeMemberId], references: [id], onDelete: Cascade)
+
+  assignedByUserId String?
+
+  assignedBy User? @relation("CommitteeAssignmentBy", fields: [assignedByUserId], references: [id])
+
+  assignedAt DateTime @default(now())
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([committeeId, committeeMemberId])
+  @@index([committeeId])
+  @@index([committeeMemberId])
+}
+
+//////////////////////////////////////////////////////////
+// BUDGET
+//////////////////////////////////////////////////////////
+
+model Budget {
+  id String @id @default(uuid())
+
+  eventId String
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  committeeId String
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, committeeId])
+}
+
+//////////////////////////////////////////////////////////
+// FUND RELEASE
+//////////////////////////////////////////////////////////
+
+model FundRelease {
+  id String @id @default(uuid())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  committeeId String
+  committee   Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  // The committee member who received the money
+  committeeMemberId String
+  committeeMember   CommitteeMember @relation(fields: [committeeMemberId], references: [id], onDelete: Restrict)
+
+  // Display name of the recipient at the time of disbursement
+  recipientName String
+
+  // Admin/President/Chairman/Chaplain who released the funds
+  releasedByUserId String
+  releasedBy       User   @relation("FundReleasedBy", fields: [releasedByUserId], references: [id], onDelete: Restrict)
+
+  receiptUrl String?
+
+  remarks String?
+
+  releasedAt DateTime @default(now())
+
+  authority FundReleaseAuthority
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  @@index([committeeId])
+  @@index([committeeMemberId])
+  @@index([releasedByUserId])
+}
+
+//////////////////////////////////////////////////////////
+// EXPENSE
+//////////////////////////////////////////////////////////
+
+model Expense {
+  id String @id @default(uuid())
+
+  eventId String
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  committeeId String
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+
+  committeeMemberId String
+
+  committeeMember CommitteeMember @relation(fields: [committeeMemberId], references: [id], onDelete: Cascade)
+
+  category ExpenseCategory
+
+  amount Decimal @db.Decimal(12, 2)
+
+  description String
+
+  receiptType ReceiptType
+
+  receiptUrl String?
+
+  expenseName String
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([committeeId])
+  @@index([category])
+}
+
+//////////////////////////////////////////////////////////
+// DELEGATE
+//////////////////////////////////////////////////////////
+
+model Delegate {
+  id String @id @default(uuid())
+
+  delegateNumber String @unique
+
+  fullName String
+
+  gender Gender
+
+  dateOfBirth DateTime?
+
+  age Int?
+
+  phoneNumber String
+
+  photoUrl String
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  deaneryId String
+  deanery   Deanery @relation(fields: [deaneryId], references: [id], onDelete: Cascade)
+
+  parishId String
+  parish   Parish @relation(fields: [parishId], references: [id], onDelete: Cascade)
+
+  parishName String
+
+  deaneryName String
+
+  qrCode String?
+
+  isCheckedIn Boolean @default(false)
+
+  checkedInAt DateTime?
+
+  checkedInByUserId String?
+
+  checkedInBy User? @relation("DelegateCheckIn", fields: [checkedInByUserId], references: [id])
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  accommodation   Accommodation?
+  searchHistories SearchHistory[]
+}
+
+//////////////////////////////////////////////////////////
+// HOSTEL
+//////////////////////////////////////////////////////////
+
+model Hostel {
+  id String @id @default(uuid())
+
+  eventId String
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  hostelName String
+
+  gender Gender
+
+  halls Hall[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, hostelName])
+}
+
+//////////////////////////////////////////////////////////
+// HALL
+//////////////////////////////////////////////////////////
+
+model Hall {
+  id String @id @default(uuid())
+
+  hostelId String
+
+  hostel Hostel @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+
+  hallName String
+
+  totalBeds Int
+
+  beds Bed[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([hostelId, hallName])
+}
+
+//////////////////////////////////////////////////////////
+// BED
+//////////////////////////////////////////////////////////
+
+model Bed {
+  id String @id @default(uuid())
+
+  hallId String
+
+  hall Hall @relation(fields: [hallId], references: [id], onDelete: Cascade)
+
+  bedNumber Int
+
+  isOccupied Boolean @default(false)
+
+  accommodation Accommodation?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([hallId, bedNumber])
+}
+
+//////////////////////////////////////////////////////////
+// ACCOMMODATION
+//////////////////////////////////////////////////////////
+
+model Accommodation {
+  id String @id @default(uuid())
+
+  delegateId String @unique
+
+  delegate Delegate @relation(fields: [delegateId], references: [id], onDelete: Cascade)
+
+  bedId String @unique
+
+  bed Bed @relation(fields: [bedId], references: [id], onDelete: Cascade)
+
+  allocatedByUserId String
+
+  allocatedBy User @relation(fields: [allocatedByUserId], references: [id])
+
+  allocatedAt DateTime @default(now())
+
+  updatedAt         DateTime         @updatedAt
+  committeeMember   CommitteeMember? @relation(fields: [committeeMemberId], references: [id])
+  committeeMemberId String?
+
+  @@index([allocatedByUserId])
+}
+
+//////////////////////////////////////////////////////////
+// ANNOUNCEMENT
+//////////////////////////////////////////////////////////
+
+model Announcement {
+  id String @id @default(uuid())
+
+  eventId String
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdByUserId String
+
+  createdBy User @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  title String
+
+  message String @db.Text
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+}
+
+//////////////////////////////////////////////////////////
+// COMPLAINT
+//////////////////////////////////////////////////////////
+
+model Complaint {
+  id String @id @default(uuid())
+
+  eventId String
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  parishId String
+
+  parish Parish @relation(fields: [parishId], references: [id], onDelete: Cascade)
+
+  title String
+
+  message String @db.Text
+
+  status ComplaintStatus @default(PENDING)
+
+  adminReply String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  @@index([parishId])
+}
+
+//////////////////////////////////////////////////////////
+// AUDIT LOG
+//////////////////////////////////////////////////////////
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  userId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  module String
+
+  action String
+
+  description String @db.Text
+
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////////
+// SEARCH HISTORY
+//////////////////////////////////////////////////////////
+
+model SearchHistory {
+  id String @id @default(uuid())
+
+  delegateId String
+
+  delegate Delegate @relation(fields: [delegateId], references: [id], onDelete: Cascade)
+
+  searchedByUserId String
+
+  searchedBy User @relation(fields: [searchedByUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([delegateId])
+  @@index([searchedByUserId])
+}
+
+model ParishArrival {
+  id String @id @default(uuid())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  parishId String
+  parish   Parish @relation(fields: [parishId], references: [id], onDelete: Cascade)
+
+  arrived Boolean @default(false)
+
+  arrivedAt DateTime?
+
+  checkedInByUserId String
+  checkedInBy       User   @relation(fields: [checkedInByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, parishId])
+}
+
+model IncomeRecord {
+  id String @id @default(cuid())
+
+  eventId String
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  source IncomeSource
+
+  payerName String
+
+  amount Decimal
+
+  receiptUrl String?
+
+  remarks String?
+
+  recordedByUserId String
+
+  recordedBy User @relation(fields: [recordedByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Vendor {
+  id String @id @default(uuid())
+
+  vendorCode String @unique
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  businessName String
+
+  ownerName String
+
+  phoneNumber String
+
+  category VendorCategory
+
+  description String?
+
+  amountPaid Decimal @db.Decimal(12, 2)
+
+  remarks String?
+
+  recordedByUserId String
+  recordedBy       User   @relation(fields: [recordedByUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
