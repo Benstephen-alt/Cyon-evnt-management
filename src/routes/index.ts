@@ -1,23 +1,23 @@
 
 import { Router, Request, Response } from "express";
 import { authRoutes } from "../modules/auth";
-import adminRoutes from "@/modules/admin/admin.routes";
-import eventRoutes from "@/modules/events";
-import hostelRoutes from "@/modules/hostels";
-import hallRoutes from "@/modules/halls";
-import accommodationRoutes from "@/modules/accommodation";
-import parishArrivalRoutes from "@/modules/parish-arrival";
-import qrRoutes from "@/modules/qr";
-import committeeRoutes from "@/modules/committee";
+import adminRoutes from "../modules/admin/admin.routes";
+import eventRoutes from "../modules/events";
+import hostelRoutes from "../modules/hostels";
+import hallRoutes from "../modules/halls";
+import accommodationRoutes from "../modules/accommodation";
+import parishArrivalRoutes from "../modules/parish-arrival";
+import qrRoutes from "../modules/qr";
+import committeeRoutes from "../modules/committee";
 import { reportsRoutes } from "../modules/reports";
 import { financeRoutes } from "../modules/finance";
 import { badgeRoutes } from "../badge";
-import { delegateRoutes } from "@/modules/delegates/index";
-import {parishRoutes} from "@/modules/parish";
+import { delegateRoutes } from "../modules/delegates/index";
+import {parishRoutes} from "../modules/parish";
 import { draftRoutes } from "../modules/delegate-drafts";
-import incomeRoutes from "@/modules/income/inccome.routes";
-import  vendorRoutes  from "@/modules/vendor/vendor.routes"
-import financeUploadRoutes from "@/modules/uploads/upload.routes";
+import incomeRoutes from "../modules/income/inccome.routes";
+import  vendorRoutes  from "../modules/vendor/vendor.routes"
+import financeUploadRoutes from "../modules/uploads/upload.routes";
 
 
 const router = Router();
