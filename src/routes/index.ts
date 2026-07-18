@@ -17,7 +17,7 @@ import { financeRoutes } from "../modules/finance";
 import { badgeRoutes } from "../badge";
 import { delegateRoutes } from "@/modules/delegates/index";
 import {parishRoutes} from "@/modules/parish";
-import { draftRoutes}  from "@/modules/delegate-drafts/index";
+import { draftRoutes } from "../modules/delegate-drafts";
 import incomeRoutes from "@/modules/income/inccome.routes";
 import  vendorRoutes  from "@/modules/vendor/vendor.routes"
 import financeUploadRoutes from "@/modules/uploads/upload.routes";

@@ -6,7 +6,7 @@ import morgan from "morgan";
 import path from "path";
 import dotenv from "dotenv";
 import apiRoutes from "./routes";
-import { draftRoutes}  from "@/modules/delegate-drafts/index";
+import { draftRoutes } from "./modules/delegate-drafts";
 
 
 dotenv.config();
