@@ -1,4 +1,9 @@
-import { PrismaClient, PaymentStatus, UserRole } from "@prisma/client";
+import {
+  PrismaClient,
+  PaymentStatus,
+  RegistrationStatus,
+  UserRole,
+} from "@prisma/client";
 import { hashPassword } from "@/shared/utils/password";
 
 const prisma = new PrismaClient();
@@ -19,37 +24,52 @@ export async function seedParishAccounts() {
   let created = 0;
 
   for (const parish of parishes) {
-    const existing = await prisma.parishAccount.findFirst({
+    const existingAccount = await prisma.parishAccount.findFirst({
       where: {
         parishId: parish.id,
         eventId: event.id,
       },
     });
 
-    if (existing) continue;
+    if (existingAccount) continue;
 
     const accessCodeHash = await hashPassword(parish.accessCode);
 
-    const user = await prisma.user.create({
-      data: {
+    // Reuse existing user if it already exists
+    let user = await prisma.user.findUnique({
+      where: {
         loginId: parish.accessCode,
-        passwordHash: accessCodeHash,
-        role: UserRole.PARISH,
       },
     });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          loginId: parish.accessCode,
+          passwordHash: accessCodeHash,
+          role: UserRole.PARISH,
+        },
+      });
+    }
 
     await prisma.parishAccount.create({
       data: {
         userId: user.id,
         parishId: parish.id,
         eventId: event.id,
+
         accessCodeHash,
-        presidentName: "To be updated",
-        presidentPhoneNumber: "00000000000",
 
-        paymentStatus: PaymentStatus.APPROVED,
+        // Registration has not started
+        presidentName: "",
+        presidentPhoneNumber: "",
+        receiptUrl: null,
 
-        isActivated: true,
+        paymentStatus: PaymentStatus.PENDING,
+        registrationStatus:
+          RegistrationStatus.NOT_SUBMITTED,
+
+        isActivated: false,
       },
     });
 

@@ -112,6 +112,7 @@ enum FundReleaseAuthority {
 }
 
 enum RegistrationStatus {
+  NOT_SUBMITTED
   PENDING
   APPROVED
   REJECTED
@@ -348,7 +349,7 @@ model ParishAccount {
 
   paymentStatus PaymentStatus @default(PENDING)
 
-  registrationStatus RegistrationStatus @default(PENDING)
+  registrationStatus RegistrationStatus @default(NOT_SUBMITTED)
 
   receiptUrl String?
 

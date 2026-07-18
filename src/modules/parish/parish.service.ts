@@ -40,28 +40,25 @@ const token = generateToken({
    * Registration has not been submitted.
    * Redirect parish to complete registration.
    */
-  if (
-    !account.presidentName ||
-    account.presidentName.trim() === ""
-  ) {
-    return {
-      success: true,
+  if (account.registrationStatus === "NOT_SUBMITTED") {
+  return {
+    success: true,
+    token,
+    requiresRegistration: true,
 
-      token,
-      requiresRegistration: true,
+    parish: {
+      id: parish.id,
+      parishName: parish.parishName,
+      parishCode: parish.parishCode,
+      deaneryName: parish.deanery.name,
+    },
 
-      parish: {
-        id: parish.id,
-        parishName: parish.parishName,
-        parishCode: parish.parishCode,
-        deaneryName: parish.deanery.name,
-      },
-
-      account: {
-        id: account.id,
-      },
-    };
-  }
+    account: {
+      id: account.id,
+      registrationStatus: account.registrationStatus,
+    },
+  };
+}
 
   /**
    * Registration submitted but awaiting approval.
