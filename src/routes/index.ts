@@ -1,6 +1,3 @@
-console.log("========== ROUTES INDEX LOADED ==========");
-
-
 
 import { Router, Request, Response } from "express";
 import { authRoutes } from "../modules/auth";
