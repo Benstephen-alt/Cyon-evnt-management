@@ -5,8 +5,8 @@ import compression from "compression";
 import morgan from "morgan";
 import path from "path";
 import dotenv from "dotenv";
-import draftRoutes from "@/modules/delegate-drafts/draft.routes";
 import apiRoutes from "./routes";
+import { draftRoutes}  from "@/modules/delegate-drafts/index";
 
 
 dotenv.config();
@@ -15,7 +15,7 @@ const app: Application = express();
 
 
 
-
+app.use("/delegate-drafts", draftRoutes);
 
 /**
  * ===========================================
@@ -95,7 +95,7 @@ app.use(
  */
 
 
-app.use("/delegate-drafts", draftRoutes);
+
 
 
 app.use(

@@ -15,12 +15,13 @@ import committeeRoutes from "@/modules/committee";
 import { reportsRoutes } from "../modules/reports";
 import { financeRoutes } from "../modules/finance";
 import { badgeRoutes } from "../badge";
-import { delegateRoutes } from "@/modules/delegates";
+import { delegateRoutes } from "@/modules/delegates/index";
 import {parishRoutes} from "@/modules/parish";
-import { draftRoutes } from "@/modules/delegate-drafts";
+import { draftRoutes}  from "@/modules/delegate-drafts/index";
 import incomeRoutes from "@/modules/income/inccome.routes";
 import  vendorRoutes  from "@/modules/vendor/vendor.routes"
 import financeUploadRoutes from "@/modules/uploads/upload.routes";
+
 
 const router = Router();
 
