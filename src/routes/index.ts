@@ -18,11 +18,18 @@ import { draftRoutes } from "../modules/delegate-drafts";
 import incomeRoutes from "../modules/income/inccome.routes";
 import  vendorRoutes  from "../modules/vendor/vendor.routes"
 import financeUploadRoutes from "../modules/uploads/upload.routes";
+import manualParishRoutes from "@/modules/manual-parish/manual-parish.routes";
+import securityRoutes from "../modules/security/security.routes"
 
 
 const router = Router();
 
 
+
+router.use("/manual-parish", manualParishRoutes);
+
+
+router.use("/security", securityRoutes);
 
 
 

@@ -12,7 +12,7 @@ export const DEFAULT_ADMIN = {
   email:
     process.env.SUPER_ADMIN_EMAIL || "admin@cyonnsukka.org",
 
-  password:
+  password: 
     process.env.SUPER_ADMIN_PASSWORD || "ChangeMe123!",
 
   phoneNumber:

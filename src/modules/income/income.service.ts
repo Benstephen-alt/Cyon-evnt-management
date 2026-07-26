@@ -258,31 +258,43 @@ export async function deleteIncomeRecord(
 export async function getIncomeStatistics() {
   const event = await getActiveEvent();
 
-  const statistics =
-    await prisma.incomeRecord.groupBy({
-      by: ["source"],
+  const statistics = await prisma.incomeRecord.groupBy({
+    by: ["source"],
+    where: {
+      eventId: event.id,
+    },
+    _sum: {
+      amount: true,
+    },
+  });
 
+  const manualIncomeAggregate =
+    await prisma.manualParishRegistration.aggregate({
       where: {
         eventId: event.id,
       },
-
       _sum: {
-        amount: true,
+        amountPaid: true,
       },
     });
 
-  const getAmount = (
-    source: IncomeSource
-  ) =>
+  const getAmount = (source: IncomeSource) =>
     Number(
       statistics.find(
         (item) => item.source === source
       )?._sum.amount ?? 0
     );
 
-  const parishIncome = getAmount(
+  const onlineParishIncome = getAmount(
     IncomeSource.PARISH_REGISTRATION
   );
+
+  const manualParishIncome = Number(
+    manualIncomeAggregate._sum.amountPaid ?? 0
+  );
+
+  const parishIncome =
+    onlineParishIncome + manualParishIncome;
 
   const vendorIncome = getAmount(
     IncomeSource.VENDOR_REGISTRATION

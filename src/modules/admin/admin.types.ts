@@ -75,17 +75,23 @@ export interface AdminDashboardResponse {
   };
 
   parishes: {
-    total: number;
-    approved: number;
-    pending: number;
-    rejected: number;
-  };
+  total: number;
+  approved: number;
+  pending: number;
+  rejected: number;
 
-  delegates: {
-    total: number;
-    male: number;
-    female: number;
-  };
+  onlineApproved: number;
+  manualApproved: number;
+}
+
+delegates: {
+  total: number;
+  male: number;
+  female: number;
+
+  onlineDelegates: number;
+  manualDelegates: number;
+}
 
   arrivals: {
     arrivedParishes: number;

@@ -94,4 +94,16 @@ export const DEFAULT_COMMITTEES = [
     description: "Coordinates liturgical celebrations.",
     permissions: [],
   },
+
+  {
+    name: "Work",
+    description: "Coordinates liturgical celebrations.",
+    permissions: [],
+  },
+
+  {
+    name: "Vendor",
+    description: "Coordinates liturgical celebrations.",
+    permissions: [],
+  },
 ];

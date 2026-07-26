@@ -14,8 +14,8 @@ export async function generateParishQr(
     where: {
       id: parishId,
     },
-  });
-
+  }); 
+ 
   if (!parish) {
     throw new Error("Parish not found.");
   }
@@ -67,39 +67,59 @@ export async function generateParishQrImage(
 
 
 
-export async function scanParishQr(
-  token: string
-) {
-  const payload = verifyQrToken(token) as {
-    type: string;
-    parishCode: string;
-    eventYear: number;
-  };
+export async function scanParishQr(token: string) {
 
-  if (payload.type !== "PARISH") {
-    throw new Error("Invalid parish QR code.");
+console.log("Scanned token:");
+  console.log(token);
+
+
+  try {
+    console.log("Received token:", token);
+
+    const payload = verifyQrToken(token) as {
+      type: string;
+      parishCode: string;
+      eventYear: number;
+    };
+
+    console.log("Decoded payload:", payload);
+
+    if (payload.type !== "PARISH") {
+      throw new Error("Invalid parish QR code.");
+    }
+
+    const parish = await prisma.parish.findUnique({
+      where: {
+        parishCode: payload.parishCode,
+      },
+    });
+
+    console.log("Parish:", parish);
+
+    if (!parish) {
+      throw new Error("Parish not found.");
+    }
+
+    const event = await getActiveEvent();
+
+    console.log("Active event:", event.year);
+    console.log("QR event year:", payload.eventYear);
+
+    if (payload.eventYear !== event.year) {
+      throw new Error("QR code belongs to a different event.");
+    }
+
+    return parishArrivalService.getParishArrivalSummary(
+      parish.id
+    );
+  } catch (error) {
+    console.error(error);
+    throw error;
   }
-
-  const parish = await prisma.parish.findUnique({
-    where: {
-      parishCode: payload.parishCode,
-    },
-  });
-
-  if (!parish) {
-    throw new Error("Parish not found.");
-  }
-
-  const event = await getActiveEvent();
-
-if (payload.eventYear !== event.year) {
-  throw new Error("QR code belongs to a different event.");
 }
 
-  return parishArrivalService.getParishArrivalSummary(
-    parish.id
-  );
-}
+
+
 
 export async function confirmParishArrival(
   token: string,
@@ -206,10 +226,11 @@ export async function scanDelegateQr(
 
   const event = await getActiveEvent();
 
-if (payload.eventYear !== event.year) {
-  throw new Error("QR code belongs to a different event.");
-}
-
+  if (payload.eventYear !== event.year) {
+    throw new Error(
+      "QR code belongs to a different event."
+    );
+  }
 
   const delegate = await prisma.delegate.findUnique({
     where: {
@@ -236,14 +257,22 @@ if (payload.eventYear !== event.year) {
     throw new Error("Delegate not found.");
   }
 
-  
-  const parishArrival = await prisma.parishArrival.findFirst({
-    where: {
-      eventId: delegate.eventId,
-      parishId: delegate.parishId,
-      arrived: true,
-    },
-  });
+  const parishArrival =
+    await prisma.parishArrival.findFirst({
+      where: {
+        eventId: delegate.eventId,
+        parishId: delegate.parishId,
+        arrived: true,
+      },
+    });
+
+  const activeGatePass =
+    await prisma.gatePass.findFirst({
+      where: {
+        delegateId: delegate.id,
+        checkedInAt: null,
+      },
+    });
 
   return {
     success: true,
@@ -252,30 +281,41 @@ if (payload.eventYear !== event.year) {
     data: {
       delegate: {
         id: delegate.id,
-        delegateNumber: delegate.delegateNumber,
+        delegateNumber:
+          delegate.delegateNumber,
         fullName: delegate.fullName,
         gender: delegate.gender,
-        phoneNumber: delegate.phoneNumber,
+        phoneNumber:
+          delegate.phoneNumber,
+        photoUrl: delegate.photoUrl,
         parish: delegate.parishName,
         deanery: delegate.deaneryName,
       },
 
-      accommodation: delegate.accommodation
-        ? {
-            hostel:
-              delegate.accommodation.bed.hall.hostel.hostelName,
-            hall:
-              delegate.accommodation.bed.hall.hallName,
-            bedNumber:
-              delegate.accommodation.bed.bedNumber,
-          }
-        : null,
+      accommodation:
+        delegate.accommodation
+          ? {
+              hostel:
+                delegate.accommodation
+                  .bed.hall.hostel
+                  .hostelName,
+
+              hall:
+                delegate.accommodation
+                  .bed.hall.hallName,
+
+              bedNumber:
+                delegate.accommodation
+                  .bed.bedNumber,
+            }
+          : null,
 
       status: {
         registered: true,
 
         accommodated:
-          delegate.accommodation !== null,
+          delegate.accommodation !==
+          null,
 
         parishArrived:
           parishArrival !== null,
@@ -284,9 +324,20 @@ if (payload.eventYear !== event.year) {
           delegate.isCheckedIn,
 
         eligibleForCheckIn:
-          delegate.accommodation !== null &&
+          delegate.accommodation !==
+            null &&
           parishArrival !== null &&
           !delegate.isCheckedIn,
+
+        outside:
+          activeGatePass !== null,
+
+        canGoOut:
+          delegate.isCheckedIn &&
+          activeGatePass === null,
+
+        canReturn:
+          activeGatePass !== null,
       },
     },
   };

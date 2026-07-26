@@ -11,9 +11,13 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
     approvedParishes,
     pendingParishes,
     rejectedParishes,
+
     totalDelegates,
     maleDelegates,
     femaleDelegates,
+
+    manualRegisteredParishes,
+    manualDelegateAggregate,
   ] = await Promise.all([
     prisma.parishAccount.count({
       where: {
@@ -24,21 +28,21 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
     prisma.parishAccount.count({
       where: {
         eventId: event.id,
-       registrationStatus: RegistrationStatus.APPROVED
+        registrationStatus: RegistrationStatus.APPROVED,
       },
     }),
 
     prisma.parishAccount.count({
       where: {
         eventId: event.id,
-       registrationStatus: RegistrationStatus.PENDING
+        registrationStatus: RegistrationStatus.PENDING,
       },
     }),
 
     prisma.parishAccount.count({
       where: {
         eventId: event.id,
-       registrationStatus: RegistrationStatus.REJECTED
+        registrationStatus: RegistrationStatus.REJECTED,
       },
     }),
 
@@ -61,77 +65,117 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
         gender: "FEMALE",
       },
     }),
+
+    prisma.manualParishRegistration.count({
+      where: {
+        eventId: event.id,
+      },
+    }),
+
+    prisma.manualParishRegistration.aggregate({
+      where: {
+        eventId: event.id,
+      },
+      _sum: {
+        totalDelegates: true,
+      },
+    }),
   ]);
 
   const arrivedParishes = await prisma.parishArrival.count({
-  where: {
-    eventId: event.id,
-    arrived: true,
-  },
-});
+    where: {
+      eventId: event.id,
+      arrived: true,
+    },
+  });
 
-const arrivedDelegates = await prisma.delegate.count({
-  where: {
-    eventId: event.id,
-    isCheckedIn: true,
-  },
-});
+  const arrivedDelegates = await prisma.delegate.count({
+    where: {
+      eventId: event.id,
+      isCheckedIn: true,
+    },
+  });
 
-const totalBeds = await prisma.bed.count({
-  where: {
-    hall: {
-      hostel: {
-        eventId: event.id,
+  const totalBeds = await prisma.bed.count({
+    where: {
+      hall: {
+        hostel: {
+          eventId: event.id,
+        },
       },
     },
-  },
-});
+  });
 
-const occupiedBeds = await prisma.bed.count({
-  where: {
-    isOccupied: true,
-    hall: {
-      hostel: {
-        eventId: event.id,
+  const occupiedBeds = await prisma.bed.count({
+    where: {
+      isOccupied: true,
+      hall: {
+        hostel: {
+          eventId: event.id,
+        },
       },
     },
-  },
-});
+  });
+
+  const manualDelegates =
+    Number(
+      manualDelegateAggregate._sum.totalDelegates ?? 0
+    );
+
+  const registeredParishes =
+    approvedParishes + manualRegisteredParishes;
+
+  const registeredDelegates =
+    totalDelegates + manualDelegates;
 
   return {
-  event: {
-    id: event.id,
-    eventName: event.eventName,
-    registrationOpen: event.registrationOpen,
-    delegateRegistrationDeadline:
-      event.delegateRegistrationDeadline,
-  },
+    event: {
+      id: event.id,
+      eventName: event.eventName,
+      registrationOpen: event.registrationOpen,
+      delegateRegistrationDeadline:
+        event.delegateRegistrationDeadline,
+    },
 
-  parishes: {
-    total: totalParishes,
-    approved: approvedParishes,
-    pending: pendingParishes,
-    rejected: rejectedParishes,
-  },
+    parishes: {
+      total: totalParishes,
+      approved: registeredParishes,
+      pending: pendingParishes,
+      rejected: rejectedParishes,
 
-  delegates: {
-    total: totalDelegates,
-    male: maleDelegates,
-    female: femaleDelegates,
-  },
+      // Breakdown
+      onlineApproved: approvedParishes,
+      manualApproved: manualRegisteredParishes,
+    },
 
-  arrivals: {
-    arrivedParishes,
-    pendingParishes: totalParishes - arrivedParishes,
-    arrivedDelegates,
-    pendingDelegates:
-      totalDelegates - arrivedDelegates,
-  },
+    delegates: {
+      total: registeredDelegates,
+      male: maleDelegates,
+      female: femaleDelegates,
 
-  accommodation: {
-    totalBeds,
-    occupiedBeds,
-    availableBeds: totalBeds - occupiedBeds,
-  },
-};
+      // Breakdown
+      onlineDelegates: totalDelegates,
+      manualDelegates,
+    },
+
+    arrivals: {
+      arrivedParishes,
+
+      pendingParishes:
+        registeredParishes - arrivedParishes,
+
+      arrivedDelegates,
+
+      // Manual delegates don't check in individually yet.
+      pendingDelegates:
+        totalDelegates - arrivedDelegates,
+    },
+
+    accommodation: {
+      totalBeds,
+      occupiedBeds,
+      availableBeds:
+        totalBeds - occupiedBeds,
+    },
+  };
 }

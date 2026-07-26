@@ -1253,26 +1253,46 @@ export async function getAccountSummary() {
   |--------------------------------------------------------------------------
   */
 
-  const incomeBreakdown =
-    await prisma.incomeRecord.groupBy({
-      by: ["source"],
+  const [incomeBreakdown, manualIncome] =
+    await Promise.all([
+      prisma.incomeRecord.groupBy({
+        by: ["source"],
 
-      where: {
-        eventId: event.id,
-      },
+        where: {
+          eventId: event.id,
+        },
 
-      _sum: {
-        amount: true,
-      },
-    });
+        _sum: {
+          amount: true,
+        },
+      }),
 
-  const parishIncome = Number(
+      prisma.manualParishRegistration.aggregate({
+        where: {
+          eventId: event.id,
+        },
+
+        _sum: {
+          amountPaid: true,
+        },
+      }),
+    ]);
+
+  const onlineParishIncome = Number(
     incomeBreakdown.find(
       (i) =>
         i.source ===
         "PARISH_REGISTRATION"
     )?._sum.amount ?? 0
   );
+
+  const manualParishIncome = Number(
+    manualIncome._sum.amountPaid ?? 0
+  );
+
+  const parishIncome =
+    onlineParishIncome +
+    manualParishIncome;
 
   const vendorIncome = Number(
     incomeBreakdown.find(
@@ -1398,49 +1418,47 @@ export async function getAccountSummary() {
           ? "BALANCE"
           : "DEFICIT",
 
-      expenses:
-        expenses.map(
-          (expense) => ({
-            id: expense.id,
+      expenses: expenses.map(
+        (expense) => ({
+          id: expense.id,
 
-            date:
-              expense.createdAt,
+          date:
+            expense.createdAt,
 
-            committee:
-              expense.committee
-                .committeeName,
+          committee:
+            expense.committee
+              .committeeName,
 
-            recordedBy:
-              expense
-                .committeeMember
-                .user.admin
-                ?.fullName ??
-              "Unknown",
+          recordedBy:
+            expense
+              .committeeMember
+              .user.admin
+              ?.fullName ??
+            "Unknown",
 
-            expenseName:
-              expense.expenseName,
+          expenseName:
+            expense.expenseName,
 
-            category:
-              expense.category,
+          category:
+            expense.category,
 
-            description:
-              expense.description,
+          description:
+            expense.description,
 
-            amount: Number(
-              expense.amount
-            ),
+          amount: Number(
+            expense.amount
+          ),
 
-            receiptType:
-              expense.receiptType,
+          receiptType:
+            expense.receiptType,
 
-            receiptUrl:
-              expense.receiptUrl,
-          })
-        ),
+          receiptUrl:
+            expense.receiptUrl,
+        })
+      ),
     },
   };
 }
-
 export async function getCommitteeOptions() {
   const event = await getActiveEvent();
 
