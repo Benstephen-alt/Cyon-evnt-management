@@ -2,38 +2,34 @@ export const BADGE_CONFIG = {
   template: "src/assets/badge-template.png",
 
   canvas: {
-    width: 1024,
-    height: 1536,
+    width: 853,
+    height: 1280,
   },
 
-  // Name
   name: {
     x: 245,
     y: 835,
-    width: 360,
-    fontSize: 33,
+    width: 260,
+    fontSize: 24,
     color: "#0B5E2E",
   },
 
-  // Parish (supports automatic 2-line wrapping)
   parish: {
-    x: 255,
-    y: 890,
-    width: 420,
-    fontSize: 33,
+    x: 245,
+    y: 925,
+    width: 260,
+    fontSize: 22,
     color: "#0B5E2E",
   },
 
-  // Delegate ID
   delegateId: {
-    x: 200,
+    x: 215,
     y: 1025,
-    width: 375,
-    fontSize: 32,
+    width: 290,
+    fontSize: 22,
     color: "#0B5E2E",
   },
 
-  // QR Code
   qr: {
     x: 520,
     y: 810,
