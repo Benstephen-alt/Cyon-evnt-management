@@ -52,7 +52,7 @@ export async function createSvgText({
       font: `DejaVu Sans Bold ${fontSize}`,
       fontfile: getFontPath(),
       width,
-      align: "center",
+      align: "left",
       rgba: true,
       dpi: 72,
     },
