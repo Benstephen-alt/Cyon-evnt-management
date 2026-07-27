@@ -47,7 +47,7 @@ export async function generateBadge(delegateId: string) {
   }
 );
 
-const verificationUrl = `http://localhost:5000/api/badges/verify/${token}`;
+const verificationUrl = `https://cyon-evnt-management-production-b62d.up.railway.app/api/badges/verify/${token}`;
 
 const qrBuffer = await QRCode.toBuffer(verificationUrl, {
   width: 500,
@@ -55,26 +55,30 @@ const qrBuffer = await QRCode.toBuffer(verificationUrl, {
 });
 
   // Create SVG text
-  const nameSvg = createSvgText({
+  const [nameSvg, parishSvg, idSvg] = await Promise.all([
+  createSvgText({
     text: delegate.fullName,
     width: BADGE_CONFIG.name.width,
     fontSize: BADGE_CONFIG.name.fontSize,
     color: BADGE_CONFIG.name.color,
-  });
+  }),
 
-  const parishSvg = createSvgText({
+  createSvgText({
     text: wrapParishName(delegate.parishName),
     width: BADGE_CONFIG.parish.width,
     fontSize: BADGE_CONFIG.parish.fontSize,
     color: BADGE_CONFIG.parish.color,
-  });
+  }),
 
-  const idSvg = createSvgText({
+  createSvgText({
     text: delegate.delegateNumber,
     width: BADGE_CONFIG.delegateId.width,
     fontSize: BADGE_CONFIG.delegateId.fontSize,
     color: BADGE_CONFIG.delegateId.color,
-  });
+  }),
+]);
+
+
 
   // Load template
   const templatePath = path.resolve(BADGE_CONFIG.template);
@@ -86,6 +90,7 @@ const qrBuffer = await QRCode.toBuffer(verificationUrl, {
     .toBuffer();
 
   // Generate badge
+
   const badge = await sharp(templatePath)
     .composite([
       {
