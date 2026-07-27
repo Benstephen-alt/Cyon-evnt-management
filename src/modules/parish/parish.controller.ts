@@ -98,7 +98,6 @@ export async function registerParishController(
   req: Request,
   res: Response
 ) {
-console.log("Authenticated user:", req.user);
   
   try {
     if (!req.user) {

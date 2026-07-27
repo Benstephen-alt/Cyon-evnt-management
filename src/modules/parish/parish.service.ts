@@ -6,6 +6,7 @@ import { validateParishAccess } from "@/shared/services/parish-access.service";
 import { RegistrationStatus, UserRole } from "@prisma/client";
 import path from "path";
 import { RegisterParishDto } from "./dto/register-parish.dto";
+import { sendParishRegistrationTelegramNotification } from "../telegram/telegram.service";
 
 
 export async function login(data: ParishLoginRequest) {
@@ -368,17 +369,25 @@ export async function updateProfile(
 
 
 
+
+
 export async function registerParish(
   userId: string,
   data: RegisterParishDto
 ) {
-
-
-
   const account =
     await prisma.parishAccount.findUnique({
       where: {
         userId,
+      },
+
+      // Add these relations only if they exist
+      include: {
+        parish: {
+          include: {
+            deanery: true,
+          },
+        },
       },
     });
 
@@ -397,29 +406,70 @@ export async function registerParish(
     );
   }
 
-  return prisma.parishAccount.update({
-    where: {
-      id: account.id,
-    },
+  const updatedAccount =
+    await prisma.parishAccount.update({
+      where: {
+        id: account.id,
+      },
 
-    data: {
+      data: {
+        presidentName:
+          data.presidentName,
+
+        presidentPhoneNumber:
+          data.presidentPhoneNumber,
+
+        receiptUrl:
+          data.receiptUrl,
+
+        paymentStatus: "PENDING",
+
+        registrationStatus:
+          "PENDING",
+      },
+
+      include: {
+        parish: {
+          include: {
+            deanery: true,
+          },
+        },
+      },
+    });
+
+  try {
+    await sendParishRegistrationTelegramNotification({
+      registrationId:
+        updatedAccount.id,
+
+      parishName:
+        updatedAccount.parish.parishName,
+
+      deaneryName:
+        updatedAccount.parish.deanery
+          .name,
+
       presidentName:
+        updatedAccount.presidentName ??
         data.presidentName,
 
-      presidentPhoneNumber:
+      phoneNumber:
+        updatedAccount
+          .presidentPhoneNumber ??
         data.presidentPhoneNumber,
 
       receiptUrl:
-        data.receiptUrl,
+        updatedAccount.receiptUrl,
+    });
+  } catch (error) {
+    console.error(
+      "Parish registration saved, but Telegram notification failed:",
+      error
+    );
+  }
 
-      paymentStatus: "PENDING",
-
-      registrationStatus:
-        "PENDING",
-    },
-  });
+  return updatedAccount;
 }
-
 export function buildReceiptPath(
   filename: string
 ) {
