@@ -26,6 +26,15 @@ export async function generateBadge(delegateId: string) {
     throw new Error("Delegate not found.");
   }
 
+
+   console.log("Generating badge:", {
+  id: delegate.id,
+  fullName: delegate.fullName,
+  parishName: delegate.parishName,
+  delegateNumber: delegate.delegateNumber,
+});
+
+
   // Generate QR Code
   const token = jwt.sign(
   {
