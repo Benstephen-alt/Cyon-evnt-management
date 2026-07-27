@@ -47,7 +47,7 @@ export async function generateBadge(delegateId: string) {
   }
 );
 
-const verificationUrl = `https://cyon-evnt-management-production-b62d.up.railway.app/api/badges/verify/${token}`;
+const verificationUrl = `http://localhost:5000/api/badges/verify/${token}`;
 
 const qrBuffer = await QRCode.toBuffer(verificationUrl, {
   width: 500,
