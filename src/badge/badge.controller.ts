@@ -109,13 +109,11 @@ export async function downloadAdminParishBadges(
 
     const parishId = req.params.parishId as string;
 
-    console.log("Parish:", parishId);
 
     const result =
       await badgeService.downloadAdminParishBadges(parishId);
 
-    console.log("Badge service finished");
-
+    
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
       "Content-Disposition",
@@ -124,7 +122,6 @@ export async function downloadAdminParishBadges(
 
     result.stream.pipe(res);
 
-    console.log("Response piped");
 
   } catch (error: any) {
     console.error(error);

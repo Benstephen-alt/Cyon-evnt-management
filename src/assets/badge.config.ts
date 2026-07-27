@@ -7,26 +7,26 @@ export const BADGE_CONFIG = {
   },
 
   name: {
-    x: 245,
-    y: 835,
+    x: 250,
+    y: 845,
     width: 260,
-    fontSize: 24,
+    fontSize: 25,
     color: "#0B5E2E",
   },
 
   parish: {
     x: 245,
-    y: 925,
+    y: 940,
     width: 260,
-    fontSize: 22,
+    fontSize: 24,
     color: "#0B5E2E",
   },
 
   delegateId: {
     x: 215,
-    y: 1025,
+    y: 1035,
     width: 290,
-    fontSize: 22,
+    fontSize: 24,
     color: "#0B5E2E",
   },
 
