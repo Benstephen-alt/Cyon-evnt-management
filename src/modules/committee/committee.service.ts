@@ -83,11 +83,54 @@ export async function getCommitteeById(
   });
 
   if (!committee) {
-    throw new Error("Committee not found.");
-  }
-
-  return committee;
+  throw new Error("Committee not found.");
 }
+
+return {
+  id: committee.id,
+  committeeName: committee.committeeName,
+  description: committee.description,
+  permissions: committee.permissions,
+  eventId: committee.eventId,
+  createdAt: committee.createdAt,
+  updatedAt: committee.updatedAt,
+
+  assignments: committee.assignments.map(
+    (assignment) => ({
+      id: assignment.id,
+      committeeId: assignment.committeeId,
+      committeeMemberId:
+        assignment.committeeMemberId,
+      assignedByUserId:
+        assignment.assignedByUserId,
+      createdAt: assignment.createdAt,
+
+      committeeMember: {
+        id: assignment.committeeMember.id,
+        userId:
+          assignment.committeeMember.userId,
+        loginId:
+          assignment.committeeMember.user.loginId,
+        email:
+          assignment.committeeMember.user.email,
+        role:
+          assignment.committeeMember.user.role,
+        isActive:
+          assignment.committeeMember.isActive,
+      },
+    })
+  ),
+};
+}
+
+
+
+
+
+
+
+
+
 
 export async function updateCommittee(
   committeeId: string,
