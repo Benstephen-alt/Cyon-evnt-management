@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { verifyQrToken } from "@/shared/utils/jwt";
 import * as parishArrivalService from "@/modules/parish-arrival/parish-arrival.service";
 
+
 export async function generateParishQr(
   parishId: string
 ) {

@@ -9,6 +9,7 @@ import dotenv from "dotenv";
 const archiver = require("archiver");
 import { PassThrough } from "stream";
 import { getActiveEvent } from "@/shared/services/event.service";
+import { generateQrToken, verifyQrToken } from "@/shared/utils/jwt";
 
 dotenv.config();
 
@@ -36,20 +37,14 @@ export async function generateBadge(delegateId: string) {
 
 
   // Generate QR Code
-  const token = jwt.sign(
-  {
-    delegateNumber: delegate.delegateNumber,
-    eventYear: delegate.event.year,
-  },
-  process.env.JWT_SECRET!,
-  {
-    expiresIn: "365d",
-  }
-);
+  const token = generateQrToken({
+  type: "DELEGATE",
+  delegateNumber: delegate.delegateNumber,
+  eventYear: delegate.event.year,
+});
 
-const verificationUrl = `https://cyon-evnt-management-production-b62d.up.railway.app/api/badges/verify/${token}`;
 
-const qrBuffer = await QRCode.toBuffer(verificationUrl, {
+const qrBuffer = await QRCode.toBuffer(token, {
   width: 500,
   margin: 1,
 });
@@ -149,13 +144,22 @@ function wrapParishName(parish: string): string {
 
 
 export async function verifyBadge(token: string) {
-  let payload: any;
+  let payload: {
+    type: string;
+    delegateNumber: string;
+    eventYear: number;
+  };
 
   try {
-    payload = jwt.verify(token, process.env.JWT_SECRET!);
-  } catch (error) {
+    payload = verifyQrToken(token);
+  } catch {
     throw new Error("Invalid or expired QR code.");
   }
+
+  if (payload.type !== "DELEGATE") {
+    throw new Error("Invalid delegate QR code.");
+  }
+
 
   const delegate = await prisma.delegate.findUnique({
     where: {

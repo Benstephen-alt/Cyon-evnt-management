@@ -24,9 +24,6 @@ export function verifyToken(token: string): JwtPayload {
 
 export function generateQrToken(payload: object): string {
 
-console.log("Generated JWT:");
-console.log(generateQrToken);
-
   return jwt.sign(
     payload,
     process.env.QR_SECRET!,
