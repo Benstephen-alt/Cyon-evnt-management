@@ -1,24 +1,20 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import * as parishService from "./parish.service";
 import { RegisterParishDto } from "./dto/register-parish.dto";
 
 
+
+
 export async function parishLogin(
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) {
   try {
     const result = await parishService.login(req.body);
-
     return res.json(result);
-
-  } catch (error: any) {
-
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-
+  } catch (error) {
+    next(error);
   }
 }
 

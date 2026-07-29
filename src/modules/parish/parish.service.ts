@@ -7,6 +7,7 @@ import { RegistrationStatus, UserRole } from "@prisma/client";
 import path from "path";
 import { RegisterParishDto } from "./dto/register-parish.dto";
 import { sendParishRegistrationTelegramNotification } from "../telegram/telegram.service";
+import { AppError } from "@/shared/errors/AppError";
 
 
 export async function login(data: ParishLoginRequest) {
@@ -23,13 +24,21 @@ export async function login(data: ParishLoginRequest) {
   });
 
   if (!parish) {
-    throw new Error("Invalid access code.");
+    throw new AppError(
+  401,
+  "Invalid access code.",
+  "INVALID_ACCESS_CODE"
+);
   }
 
   const account = parish.parishAccounts[0];
 
 if (!account) {
-  throw new Error("Parish account not found.");
+  throw new AppError(
+  401,
+  "Invalid access code.",
+  "INVALID_ACCESS_CODE"
+);
 }
 
 const token = generateToken({

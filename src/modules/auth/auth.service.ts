@@ -8,6 +8,7 @@ import {
     LoginRequest,
     LoginResponse,
 } from "./auth.types";
+import { AppError } from "@/shared/errors/AppError";
 
 export class AuthService {
 
@@ -25,18 +26,30 @@ export class AuthService {
         });
 
         if (!user || !user.admin) {
-            throw new Error("Invalid email or password.");
+           throw new AppError(
+  401,
+  "Invalid email or password.",
+  "INVALID_CREDENTIALS"
+);
         }
 
         if (!user.isActive) {
-            throw new Error("Account has been disabled.");
+            throw new AppError(
+  403,
+  "Account has been disabled.",
+  "ACCOUNT_DISABLED"
+);
         }
 
         if (
             user.role !== UserRole.SUPER_ADMIN &&
             user.role !== UserRole.ADMIN
         ) {
-            throw new Error("Access denied.");
+            throw new AppError(
+  403,
+  "Access denied.",
+  "ACCESS_DENIED"
+);
         }
 
         const passwordCorrect =
@@ -46,7 +59,11 @@ export class AuthService {
             );
 
         if (!passwordCorrect) {
-            throw new Error("Invalid email or password.");
+           throw new AppError(
+  401,
+  "Invalid email or password.",
+  "INVALID_CREDENTIALS"
+);
         }
 
         await prisma.user.update({
@@ -168,21 +185,35 @@ static async committeeLogin(
 });
 
   if (!user || !user.committeeMember) {
-    throw new Error("Invalid email or password.");
+    throw new AppError(
+  401,
+  "Invalid email or password.",
+  "INVALID_CREDENTIALS"
+);
   }
 
   if (!user.isActive) {
-    throw new Error("Account has been disabled.");
+    throw new AppError(
+  403,
+  "Account has been disabled.",
+  "ACCOUNT_DISABLED"
+);
   }
 
   if (!user.committeeMember) {
-  throw new Error("Access denied.");
+  throw new AppError(
+  403,
+  "Access denied.",
+  "ACCESS_DENIED"
+);
 }
 
   if (!user.committeeMember.isActive) {
-    throw new Error(
-      "Committee member account has been disabled."
-    );
+    throw new AppError(
+    403,
+    "Committee member account has been disabled.",
+    "COMMITTEE_ACCOUNT_DISABLED"
+  );
   }
 
   const passwordCorrect = await comparePassword(
@@ -191,7 +222,11 @@ static async committeeLogin(
   );
 
   if (!passwordCorrect) {
-    throw new Error("Invalid email or password.");
+    throw new AppError(
+  401,
+  "Invalid email or password.",
+  "INVALID_CREDENTIALS"
+);
   }
 
   await prisma.user.update({

@@ -7,6 +7,8 @@ import path from "path";
 import dotenv from "dotenv";
 import apiRoutes from "./routes";
 import { draftRoutes } from "./modules/delegate-drafts";
+import { ZodError } from "zod";
+import { AppError } from "./shared/errors/AppError";
 
 
 dotenv.config();
@@ -158,20 +160,38 @@ app.use((_req: Request, res: Response) => {
  */
 app.use(
   (
-    err: Error,
+    error: unknown,
     _req: Request,
     res: Response,
     _next: NextFunction
   ) => {
-    console.error(err);
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        success: false,
+        code: "VALIDATION_ERROR",
+        message:
+          error.issues[0]?.message ??
+          "Invalid request data.",
+      });
+    }
 
-    res.status(500).json({
+    if (error instanceof AppError) {
+      return res
+        .status(error.statusCode)
+        .json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+    }
+
+    console.error("Unexpected server error:", error);
+
+    return res.status(500).json({
       success: false,
-      message: "Internal Server Error",
-      error:
-        process.env.NODE_ENV === "development"
-          ? err.message
-          : undefined
+      code: "INTERNAL_SERVER_ERROR",
+      message:
+        "Server error. Please try again later.",
     });
   }
 );
