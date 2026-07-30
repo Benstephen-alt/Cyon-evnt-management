@@ -6,6 +6,7 @@ const uploadRoot = path.join(process.cwd(), "uploads");
 export function ensureUploadFolders() {
   const folders = [
     "delegates",
+    "committee-members",
     "receipts",
     "events",
     "announcements",

@@ -9,6 +9,7 @@ import apiRoutes from "./routes";
 import { draftRoutes } from "./modules/delegate-drafts";
 import { ZodError } from "zod";
 import { AppError } from "./shared/errors/AppError";
+import multer from "multer";
 
 
 dotenv.config();
@@ -172,6 +173,17 @@ app.use(
         message:
           error.issues[0]?.message ??
           "Invalid request data.",
+      });
+    }
+
+    if (error instanceof multer.MulterError) {
+      return res.status(400).json({
+        success: false,
+        code: "UPLOAD_ERROR",
+        message:
+          error.code === "LIMIT_FILE_SIZE"
+            ? "The uploaded file must not exceed 5 MB."
+            : error.message,
       });
     }
 

@@ -75,6 +75,8 @@ model Event {
   vendors                      Vendor[]
   manualRegistrations          ManualParishRegistration[]
   gatePasses                   GatePass[]
+  committeeBadges              CommitteeBadge[]
+  committeeBadgeSequence       Int                        @default(0)
 }
 
 model Deanery {
@@ -239,6 +241,7 @@ model Committee {
   assignments   CommitteeAssignment[]
   expenses      Expense[]
   fundReleases  FundRelease[]
+  badges        CommitteeBadge[]
 
   @@unique([eventId, committeeName])
 }
@@ -254,6 +257,27 @@ model CommitteeMember {
   user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses       Expense[]
   fundReleases   FundRelease[]
+  badges         CommitteeBadge[]
+}
+
+model CommitteeBadge {
+  id                String          @id @default(uuid())
+  eventId           String
+  committeeId       String
+  committeeMemberId String
+  badgeNumber       String          @unique
+  fullName          String
+  photoUrl          String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  event             Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  committee         Committee       @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  committeeMember   CommitteeMember @relation(fields: [committeeMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, committeeMemberId])
+  @@index([eventId])
+  @@index([committeeId])
+  @@index([committeeMemberId])
 }
 
 model CommitteeAssignment {

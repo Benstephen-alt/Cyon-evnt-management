@@ -20,6 +20,7 @@ import  vendorRoutes  from "../modules/vendor/vendor.routes"
 import financeUploadRoutes from "../modules/uploads/upload.routes";
 import manualParishRoutes from "@/modules/manual-parish/manual-parish.routes";
 import securityRoutes from "../modules/security/security.routes"
+import { committeeBadgeRoutes } from "../modules/committee-badge";
 
 
 const router = Router();
@@ -144,6 +145,8 @@ router.use("/hostels", hostelRoutes);
 router.use("/halls", hallRoutes);
 
 router.use("/committees", committeeRoutes);
+
+router.use("/committee-badges", committeeBadgeRoutes);
 
 router.use("/reports", reportsRoutes);
 
