@@ -7,8 +7,6 @@ export async function createDelegate(
   res: Response
 ) {
   try {
-    console.log("BODY:", req.body);
-     console.log("FILE:", req.file);
 
     const data = {
       ...req.body,

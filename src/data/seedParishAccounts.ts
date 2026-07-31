@@ -76,5 +76,4 @@ export async function seedParishAccounts() {
     created++;
   }
 
-  console.log(`✅ Created ${created} parish accounts`);
 }

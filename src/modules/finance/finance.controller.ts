@@ -371,7 +371,6 @@ export async function getCommitteeMemberDashboard(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  console.log(req.user);
   try {
     const result =
       await financeService.getCommitteeMemberDashboard(

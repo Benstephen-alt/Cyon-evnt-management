@@ -16,7 +16,6 @@ import { createEvent,
 const router = Router();
 
 router.use((req, res, next) => {
-  console.log("EVENT ROUTER:", req.method, req.originalUrl);
   next();
 });
 

@@ -14,7 +14,6 @@ async function main() {
     },
   });
 
-  console.log("✅ Parish accounts reset successfully.");
 }
 
 main()

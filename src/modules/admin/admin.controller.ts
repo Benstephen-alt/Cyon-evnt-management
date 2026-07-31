@@ -341,7 +341,6 @@ export async function approveRegistrations(
   res: Response
 ) {
 
-console.log("Params:", req.params);
 
   try {
     await adminService.approveParishRegistrations(

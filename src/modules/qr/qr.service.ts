@@ -70,12 +70,9 @@ export async function generateParishQrImage(
 
 export async function scanParishQr(token: string) {
 
-console.log("Scanned token:");
-  console.log(token);
 
 
   try {
-    console.log("Received token:", token);
 
     const payload = verifyQrToken(token) as {
       type: string;
@@ -83,7 +80,6 @@ console.log("Scanned token:");
       eventYear: number;
     };
 
-    console.log("Decoded payload:", payload);
 
     if (payload.type !== "PARISH") {
       throw new Error("Invalid parish QR code.");
@@ -95,7 +91,6 @@ console.log("Scanned token:");
       },
     });
 
-    console.log("Parish:", parish);
 
     if (!parish) {
       throw new Error("Parish not found.");
@@ -103,8 +98,6 @@ console.log("Scanned token:");
 
     const event = await getActiveEvent();
 
-    console.log("Active event:", event.year);
-    console.log("QR event year:", payload.eventYear);
 
     if (payload.eventYear !== event.year) {
       throw new Error("QR code belongs to a different event.");

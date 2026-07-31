@@ -2,11 +2,9 @@ import prisma from "@/config/prisma";
 import { seedParishAccounts } from "@/data/seedParishAccounts";
 
 async function main() {
-  console.log("🌱 Seeding parish accounts...");
 
   await seedParishAccounts();
 
-  console.log("✅ Parish accounts seeded successfully.");
 }
 
 main()

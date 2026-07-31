@@ -454,7 +454,6 @@ export async function getParishDetails(parishId: string) {
 
 
 export async function getPendingRegistrations() {
- console.log("===== GET PENDING REGISTRATIONS CALLED =====");
 
 
   const registrations = await prisma.parishAccount.findMany({

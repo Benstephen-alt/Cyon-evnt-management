@@ -13,22 +13,15 @@ import { DEFAULT_HOSTELS } from "../src/config/defaultHostels";
 ============================================================ */
 
 function divider(title: string) {
-  console.log("");
-  console.log("===========================================");
-  console.log(title);
-  console.log("===========================================");
 }
 
 function success(message: string) {
-  console.log(`✅ ${message}`);
 }
 
 function skip(message: string) {
-  console.log(`⏭️ ${message}`);
 }
 
 function fail(message: string) {
-  console.log(`❌ ${message}`);
 }
 
 /* ============================================================

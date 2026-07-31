@@ -28,12 +28,6 @@ export async function generateBadge(delegateId: string) {
   }
 
 
-   console.log("Generating badge:", {
-  id: delegate.id,
-  fullName: delegate.fullName,
-  parishName: delegate.parishName,
-  delegateNumber: delegate.delegateNumber,
-});
 
 
   // Generate QR Code

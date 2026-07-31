@@ -328,5 +328,4 @@ export async function downloadVendorTag(
   id: string,
   res: Response
 ): Promise<void> { 
-  console.log("downloadVendorTag service");
 }

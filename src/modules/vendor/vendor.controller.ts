@@ -87,7 +87,6 @@ export async function downloadVendorTag(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  console.log("downloadVendorTag controller");
 
   try {
     await vendorService.downloadVendorTag(

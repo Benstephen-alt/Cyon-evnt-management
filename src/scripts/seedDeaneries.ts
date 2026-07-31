@@ -12,11 +12,9 @@ async function main() {
     throw new Error("No active event found.");
   }
 
-  console.log(`🌱 Seeding deaneries for: ${event.eventName}`);
 
   await seedDeaneries(event.id);
 
-  console.log("✅ Deaneries and parishes seeded successfully.");
 }
 
 main()

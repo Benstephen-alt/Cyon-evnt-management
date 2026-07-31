@@ -84,6 +84,21 @@ export async function getDelegateById(
       eventId: event.id,
     },
     include: {
+      event: {
+        select: {
+          eventName: true,
+          theme: true,
+          year: true,
+          startDate: true,
+          endDate: true,
+        },
+      },
+      parish: {
+        select: {
+          parishName: true,
+          parishCode: true,
+        },
+      },
       accommodation: {
         include: {
           bed: {

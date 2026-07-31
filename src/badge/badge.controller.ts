@@ -105,7 +105,6 @@ export async function downloadAdminParishBadges(
   res: Response
 ) {
   try {
-    console.log("Download request received");
 
     const parishId = req.params.parishId as string;
 

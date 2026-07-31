@@ -49,6 +49,4 @@ export async function seedDeaneries(eventId: string) {
     }
   }
 
-  console.log(`✅ Seeded ${nsukkaDiocese.length} deaneries`);
-  console.log(`✅ Seeded ${parishCount} new parishes`);
 }

@@ -1,4 +1,3 @@
-console.log("========== VENDOR ROUTES LOADED ==========");
 
 
 

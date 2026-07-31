@@ -3,11 +3,9 @@ import { PrismaClient, UserRole } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🗑 Deleting parish accounts...");
 
   await prisma.parishAccount.deleteMany();
 
-  console.log("🗑 Deleting parish users...");
 
   await prisma.user.deleteMany({
     where: {
@@ -15,7 +13,6 @@ async function main() {
     },
   });
 
-  console.log("✅ Parish accounts deleted successfully.");
 }
 
 main()

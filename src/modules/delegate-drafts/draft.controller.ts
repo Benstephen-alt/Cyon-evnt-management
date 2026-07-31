@@ -54,8 +54,6 @@ export async function updateCurrentDraft(
   req: Request,
   res: Response
 ) {
-console.log("HEADERS:", req.headers.authorization);
-  console.log("USER:", req.user);
 
 
   try {
