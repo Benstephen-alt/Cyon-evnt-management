@@ -8,7 +8,7 @@ export const BADGE_CONFIG = {
 
   name: {
     x: 250,
-    y: 845,
+    y: 828,
     width: 260,
     fontSize: 25,
     color: "#0B5E2E",

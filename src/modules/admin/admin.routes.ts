@@ -7,6 +7,8 @@ import { authorize } from "@/shared/utils/middlewares/role.middleware";
 
 import {
   getParishes,
+  getDeaneries,
+  createParish,
   getParishById,
   rejectParish,
   getDashboard,
@@ -89,6 +91,20 @@ router.get(
   authenticate,
   authorize("SUPER_ADMIN", "ADMIN"),
   getParishes
+);
+
+router.get(
+  "/deaneries",
+  authenticate,
+  authorize("SUPER_ADMIN", "ADMIN"),
+  getDeaneries
+);
+
+router.post(
+  "/parishes",
+  authenticate,
+  authorize("SUPER_ADMIN", "ADMIN"),
+  createParish
 );
 
 

@@ -8,6 +8,79 @@ import { IncomeSource } from "@prisma/client";
 import { generateAccessCode } from "@/shared/utils/accessCode";
 import { hashPassword } from "@/shared/utils/password";
 
+interface CreateParishInput {
+  parishName: string;
+  deaneryId: string;
+}
+
+export async function getActiveEventDeaneries() {
+  const event = await getActiveEvent();
+
+  return prisma.deanery.findMany({
+    where: { eventId: event.id },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+export async function createParish(input: CreateParishInput) {
+  const parishName = input.parishName.trim();
+
+  if (!parishName || !input.deaneryId) {
+    throw new Error("Parish name and deanery are required.");
+  }
+
+  const event = await getActiveEvent();
+  const deanery = await prisma.deanery.findFirst({
+    where: {
+      id: input.deaneryId,
+      eventId: event.id,
+    },
+  });
+
+  if (!deanery) {
+    throw new Error("The selected deanery does not belong to the active event.");
+  }
+
+  const existingParish = await prisma.parish.findFirst({
+    where: {
+      deaneryId: deanery.id,
+      parishName: {
+        equals: parishName,
+        mode: "insensitive",
+      },
+    },
+  });
+
+  if (existingParish) {
+    throw new Error("A parish with this name already exists in the selected deanery.");
+  }
+
+  const parishCodes = await prisma.parish.findMany({
+    select: { parishCode: true },
+  });
+
+  const highestCode = parishCodes.reduce((highest, parish) => {
+    const match = /^PAR-(\d+)$/.exec(parish.parishCode);
+    return match ? Math.max(highest, Number(match[1])) : highest;
+  }, 0);
+
+  let accessCode = generateAccessCode();
+  while (await prisma.parish.findUnique({ where: { accessCode } })) {
+    accessCode = generateAccessCode();
+  }
+
+  return prisma.parish.create({
+    data: {
+      parishName,
+      deaneryId: deanery.id,
+      parishCode: `PAR-${String(highestCode + 1).padStart(4, "0")}`,
+      accessCode,
+    },
+    include: { deanery: true },
+  });
+}
+
 export async function getParishes()  {
   const event = await getActiveEvent();
 

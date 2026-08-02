@@ -7,7 +7,7 @@ export const COMMITTEE_BADGE_CONFIG = {
     x: 250,
     y: 966,
     width: 245,
-    fontSize: 30,
+    fontSize: 24,
     color: "#102E1B",
   },
   committee: {

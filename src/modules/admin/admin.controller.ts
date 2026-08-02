@@ -26,6 +26,45 @@ export async function getParishes(
   }
 }
 
+export async function getDeaneries(
+  req: Request,
+  res: Response
+) {
+  try {
+    const deaneries = await adminService.getActiveEventDeaneries();
+
+    return res.json({ success: true, data: deaneries });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function createParish(
+  req: Request,
+  res: Response
+) {
+  try {
+    const parish = await adminService.createParish({
+      parishName: String(req.body?.parishName ?? ""),
+      deaneryId: String(req.body?.deaneryId ?? ""),
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Parish created successfully.",
+      data: {
+        id: parish.id,
+        parishName: parish.parishName,
+        parishCode: parish.parishCode,
+        accessCode: parish.accessCode,
+        deanery: parish.deanery.name,
+      },
+    });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 export async function getParishById(
   req: Request,
   res: Response
