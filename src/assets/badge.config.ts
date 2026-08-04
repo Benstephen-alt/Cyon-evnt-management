@@ -16,7 +16,7 @@ export const BADGE_CONFIG = {
 
   parish: {
     x: 245,
-    y: 940,
+    y: 920,
     width: 260,
     fontSize: 24,
     color: "#0B5E2E",
