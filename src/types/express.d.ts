@@ -5,6 +5,7 @@ declare module "express-serve-static-core" {
     user?: {
       userId: string;
       role: string;
+      portal: "ADMIN" | "COMMITTEE" | "PARISH";
     };
   }
 }

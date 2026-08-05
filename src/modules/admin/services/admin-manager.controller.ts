@@ -161,3 +161,29 @@ export async function resetAdminPassword(
     });
   }
 }
+
+export async function setAdminPortalAccess(
+  req: Request,
+  res: Response
+) {
+  try {
+    if (typeof req.body?.enabled !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "The enabled value must be true or false.",
+      });
+    }
+
+    const result = await adminService.setAdminPortalAccess(
+      req.params.id as string,
+      req.body.enabled
+    );
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}

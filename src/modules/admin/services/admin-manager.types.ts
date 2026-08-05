@@ -22,6 +22,10 @@ export interface UpdateAdminDto {
   role?: UserRole;
 }
 
+export interface UpdateAdminPortalAccessDto {
+  enabled: boolean;
+}
+
 export interface ResetAdminPasswordResponse {
   temporaryPassword: string;
 }
@@ -38,6 +42,10 @@ export interface AdminListResponse {
   role: UserRole;
 
   isActive: boolean;
+
+  adminPortalAccess: boolean;
+
+  isCommitteeMember: boolean;
 
   createdAt: Date;
 }

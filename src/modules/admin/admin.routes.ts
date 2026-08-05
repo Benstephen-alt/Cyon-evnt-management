@@ -4,6 +4,7 @@ import { Router } from "express";
 
 import { authenticate } from "@/shared/utils/middlewares/auth.middleware";
 import { authorize } from "@/shared/utils/middlewares/role.middleware";
+import { authorizeAdminPortal } from "@/shared/utils/middlewares/admin-portal.middleware";
 
 import {
   getParishes,
@@ -35,9 +36,12 @@ import {
   disableAdmin,
   enableAdmin,
   resetAdminPassword,
+  setAdminPortalAccess,
 } from "./services/admin-manager.controller";
 
 const router = Router();
+
+router.use(authenticate, authorizeAdminPortal);
 
 
 /**
@@ -304,6 +308,13 @@ router.patch(
   authenticate,
   authorize("SUPER_ADMIN"),
   resetAdminPassword
+);
+
+router.patch(
+  "/admins/:id/portal-access",
+  authenticate,
+  authorize("SUPER_ADMIN"),
+  setAdminPortalAccess
 );
 
 

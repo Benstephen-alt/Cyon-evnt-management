@@ -4,6 +4,7 @@ import jwt, { Secret, SignOptions } from "jsonwebtoken";
 export interface JwtPayload {
   userId: string;
   role: string;
+  portal: "ADMIN" | "COMMITTEE" | "PARISH";
 }
 
 const JWT_SECRET: Secret = process.env.JWT_SECRET as Secret;

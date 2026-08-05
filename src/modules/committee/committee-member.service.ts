@@ -30,14 +30,25 @@ export async function createCommitteeMember(
     );
   }
 
-  const member = await prisma.committeeMember.create({
-  data: {
-    userId: data.userId,
-  },
-  include: {
-    user: true,
-  },
-});
+  const member = await prisma.$transaction(async (tx) => {
+    const createdMember = await tx.committeeMember.create({
+      data: {
+        userId: data.userId,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (user.role === "ADMIN") {
+      await tx.admin.updateMany({
+        where: { userId: user.id },
+        data: { adminPortalAccess: false },
+      });
+    }
+
+    return createdMember;
+  });
 
 return member;
 }

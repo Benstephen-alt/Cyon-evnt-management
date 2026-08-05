@@ -22,6 +22,7 @@ export class AuthService {
             },
             include: {
                 admin: true,
+                committeeMember: true,
             },
         });
 
@@ -66,6 +67,17 @@ export class AuthService {
 );
         }
 
+        if (
+            user.role === UserRole.ADMIN &&
+            !user.admin.adminPortalAccess
+        ) {
+            throw new AppError(
+              403,
+              "This account is restricted to the committee portal.",
+              "ADMIN_PORTAL_RESTRICTED"
+            );
+        }
+
         await prisma.user.update({
             where: {
                 id: user.id,
@@ -78,6 +90,7 @@ export class AuthService {
         const token = generateToken({
             userId: user.id,
             role: user.role,
+            portal: "ADMIN",
         });
 
         return {
@@ -144,6 +157,7 @@ static async parishLogin(accessCode: string) {
   const token = generateToken({
     userId: user.id,
     role: UserRole.PARISH,
+    portal: "PARISH",
   });
 
   return {
@@ -241,6 +255,7 @@ static async committeeLogin(
   const token = generateToken({
     userId: user.id,
     role: user.role,
+    portal: "COMMITTEE",
   });
 
   return {

@@ -23,6 +23,7 @@ export function authenticate(
     req.user = {
       userId: payload.userId,
       role: payload.role,
+      portal: payload.portal,
     };
 
     next();

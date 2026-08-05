@@ -44,6 +44,7 @@ if (!account) {
 const token = generateToken({
   userId: account.userId,
   role: "PARISH",
+  portal: "PARISH",
 });
 
   /**
@@ -522,6 +523,7 @@ export async function checkApprovalStatus(
   const token = generateToken({
     userId: account.userId,
     role: "PARISH",
+    portal: "PARISH",
   });
 
   return {

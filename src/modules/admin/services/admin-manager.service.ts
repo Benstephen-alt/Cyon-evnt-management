@@ -70,6 +70,7 @@ export async function createAdmin(
 
       include: {
         admin: true,
+        committeeMember: true,
       },
     });
 
@@ -94,6 +95,7 @@ export async function getAdmins() {
 
       include: {
         admin: true,
+        committeeMember: true,
       },
 
       orderBy: {
@@ -124,10 +126,57 @@ export async function getAdmins() {
         isActive:
           admin.isActive,
 
+        adminPortalAccess:
+          admin.role === "SUPER_ADMIN" ||
+          Boolean(admin.admin?.adminPortalAccess),
+
+        isCommitteeMember:
+          Boolean(admin.committeeMember),
+
         createdAt:
           admin.createdAt,
       })
     ),
+  };
+}
+
+export async function setAdminPortalAccess(
+  userId: string,
+  enabled: boolean
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { admin: true, committeeMember: true },
+  });
+
+  if (!user || !user.admin) {
+    throw new Error("Administrator not found.");
+  }
+
+  if (user.role === "SUPER_ADMIN") {
+    throw new Error("Super Admin portal access cannot be restricted.");
+  }
+
+  if (!enabled && !user.committeeMember) {
+    throw new Error(
+      "Only administrators with a committee assignment can be restricted to the committee portal."
+    );
+  }
+
+  const admin = await prisma.admin.update({
+    where: { userId },
+    data: { adminPortalAccess: enabled },
+  });
+
+  return {
+    success: true,
+    message: enabled
+      ? "Administrator portal access allowed."
+      : "Administrator restricted to the committee portal.",
+    data: {
+      userId,
+      adminPortalAccess: admin.adminPortalAccess,
+    },
   };
 }
 
