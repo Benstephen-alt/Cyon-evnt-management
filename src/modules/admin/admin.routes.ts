@@ -25,6 +25,7 @@ getAdminParishes,
 getParishDetailsController,
 getPendingRegistrationsController,
 approveRegistrations,
+resetParishCheckIn,
 getParishDashboard
 } from "./admin.controller";
 
@@ -308,6 +309,13 @@ router.patch(
   authenticate,
   authorize("SUPER_ADMIN"),
   resetAdminPassword
+);
+
+router.patch(
+  "/parishes/:parishId/reset-check-in",
+  authenticate,
+  authorize("SUPER_ADMIN"),
+  resetParishCheckIn
 );
 
 router.patch(

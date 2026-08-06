@@ -328,6 +328,90 @@ export async function rejectParish(
   });
 }
 
+export async function resetParishCheckIn(
+  parishId: string
+) {
+  const event = await getActiveEvent();
+
+  const account = await prisma.parishAccount.findFirst({
+    where: {
+      parishId,
+      eventId: event.id,
+    },
+    include: {
+      parish: true,
+    },
+  });
+
+  if (!account) {
+    throw new Error("Parish registration not found for the active event.");
+  }
+
+  if (account.registrationStatus !== RegistrationStatus.APPROVED) {
+    throw new Error("Only an approved parish check-in can be reset.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const delegates = await tx.delegate.findMany({
+      where: {
+        parishId,
+        eventId: event.id,
+      },
+      include: {
+        accommodation: true,
+      },
+    });
+
+    const accommodationIds = delegates
+      .map((delegate) => delegate.accommodation?.id)
+      .filter((id): id is string => Boolean(id));
+    const bedIds = delegates
+      .map((delegate) => delegate.accommodation?.bedId)
+      .filter((id): id is string => Boolean(id));
+
+    if (accommodationIds.length > 0) {
+      await tx.accommodation.deleteMany({
+        where: { id: { in: accommodationIds } },
+      });
+
+      await tx.bed.updateMany({
+        where: { id: { in: bedIds } },
+        data: { isOccupied: false },
+      });
+    }
+
+    const resetDelegates = await tx.delegate.updateMany({
+      where: {
+        parishId,
+        eventId: event.id,
+      },
+      data: {
+        isCheckedIn: false,
+        checkedInAt: null,
+        checkedInByUserId: null,
+      },
+    });
+
+    const removedArrivals = await tx.parishArrival.deleteMany({
+      where: {
+        parishId,
+        eventId: event.id,
+      },
+    });
+
+    return {
+      success: true,
+      message: `${account.parish.parishName} check-in reset successfully.`,
+      data: {
+        delegatesReset: resetDelegates.count,
+        accommodationsRemoved: accommodationIds.length,
+        bedsReleased: bedIds.length,
+        parishArrivalsRemoved: removedArrivals.count,
+      },
+    };
+  });
+}
+
 
 
 

@@ -7,6 +7,7 @@ import {
   getManualRegistrationById,
   updateManualRegistration,
   deleteManualRegistration,
+  allocateManualParishAccommodation,
 } from "./manual-parish.controller";
 
 
@@ -31,6 +32,11 @@ router.post("/register",
   authenticate,
   authorize("SUPER_ADMIN", "ADMIN"),
   registerManualParish);
+
+router.post("/:id/allocate-accommodation",
+  authenticate,
+  authorize("SUPER_ADMIN", "ADMIN"),
+  allocateManualParishAccommodation);
 
 router.get("/:id",
   authenticate,

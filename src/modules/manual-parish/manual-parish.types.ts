@@ -2,7 +2,8 @@ export interface CreateManualParishRegistrationDto {
   parishId: string;
   presidentName: string;
   presidentPhone: string;
-  totalDelegates: number;
+  maleDelegates: number;
+  femaleDelegates: number;
 }
 
 export interface ManualParishRegistrationResponse {
@@ -16,6 +17,8 @@ export interface ManualParishRegistrationResponse {
   presidentPhone: string;
 
   totalDelegates: number;
+  maleDelegates: number;
+  femaleDelegates: number;
   delegatesOutside: number;
 
   amountPaid: number;

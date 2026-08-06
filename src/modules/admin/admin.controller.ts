@@ -399,6 +399,24 @@ export async function approveRegistrations(
   }
 }
 
+export async function resetParishCheckIn(
+  req: Request,
+  res: Response
+) {
+  try {
+    const result = await adminService.resetParishCheckIn(
+      req.params.parishId as string
+    );
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 export async function getParishDashboard(
   req: Request,
   res: Response

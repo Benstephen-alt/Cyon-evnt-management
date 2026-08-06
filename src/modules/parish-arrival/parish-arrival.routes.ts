@@ -9,6 +9,7 @@ import {
   getParishArrivalSummary,
   markParishArrived,
    getArrivedParishes,
+   getArrivedParishAccommodationDetails,
    getPendingParishes,
    getParishArrivalDashboard,
     generateParishQr,
@@ -45,6 +46,15 @@ router.get(
         CommitteePermission.SCAN_PARISH
     ),
     getArrivedParishes
+);
+
+router.get(
+  "/arrived/:parishId/accommodation-details",
+  authenticate,
+  authorizePermission(
+    CommitteePermission.SCAN_PARISH
+  ),
+  getArrivedParishAccommodationDetails
 );
 
 router.get(

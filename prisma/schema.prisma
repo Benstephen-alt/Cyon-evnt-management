@@ -32,6 +32,7 @@ model User {
   searchHistory               SearchHistory[]
   vendors                     Vendor[]
   manualParishRegistrations   ManualParishRegistration[]
+  manualAccommodationAllocations ManualDelegateAccommodation[]
   gatePassesCheckedOut        GatePass[]                 @relation("GatePassCheckedOutBy")
   gatePassesCheckedIn         GatePass[]                 @relation("GatePassCheckedInBy")
   notificationCampaigns       NotificationCampaign[]
@@ -179,8 +180,11 @@ model ManualParishRegistration {
   presidentPhone String
 
   totalDelegates Int
+  maleDelegates  Int @default(0)
+  femaleDelegates Int @default(0)
 
   delegatesOutside Int @default(0)
+  accommodationAllocatedAt DateTime?
 
   amountPaid Decimal @db.Decimal(12, 2)
 
@@ -190,6 +194,7 @@ model ManualParishRegistration {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   gatePasses GatePass[]
+  accommodations ManualDelegateAccommodation[]
 
   @@unique([eventId, parishId])
 }
@@ -423,9 +428,27 @@ model Bed {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   accommodation Accommodation?
+  manualAccommodation ManualDelegateAccommodation?
   hall          Hall           @relation(fields: [hallId], references: [id], onDelete: Cascade)
 
   @@unique([hallId, bedNumber])
+}
+
+model ManualDelegateAccommodation {
+  id                String   @id @default(uuid())
+  registrationId    String
+  bedId              String   @unique
+  gender             Gender
+  delegatePosition   Int
+  allocatedByUserId  String
+  allocatedAt        DateTime @default(now())
+  registration       ManualParishRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  bed                Bed      @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  allocatedBy        User     @relation(fields: [allocatedByUserId], references: [id])
+
+  @@unique([registrationId, gender, delegatePosition])
+  @@index([registrationId])
+  @@index([allocatedByUserId])
 }
 
 model Accommodation {

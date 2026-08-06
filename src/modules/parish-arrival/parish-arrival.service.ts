@@ -230,50 +230,79 @@ export async function markParishArrived(
 export async function getArrivedParishes() {
   const event = await getActiveEvent();
 
-  const arrivals = await prisma.parishArrival.findMany({
-    where: {
-      eventId: event.id,
-      arrived: true,
-    },
-    include: {
-      parish: {
-        include: {
-          deanery: true,
+  const [arrivals, manualRegistrations] = await Promise.all([
+    prisma.parishArrival.findMany({
+      where: { eventId: event.id, arrived: true },
+      include: {
+        parish: { include: { deanery: true } },
+        checkedInBy: { include: { admin: true } },
+      },
+      orderBy: { arrivedAt: "asc" },
+    }),
+    prisma.manualParishRegistration.findMany({
+      where: {
+        eventId: event.id,
+        accommodationAllocatedAt: { not: null },
+      },
+      include: {
+        parish: { include: { deanery: true } },
+        accommodations: {
+          take: 1,
+          orderBy: { allocatedAt: "asc" },
+          include: { allocatedBy: { include: { admin: true } } },
         },
       },
-      checkedInBy: {
-        include: {
-          admin: true,
-        },
-      },
-    },
-    orderBy: {
-      arrivedAt: "asc",
-    },
+      orderBy: { accommodationAllocatedAt: "asc" },
+    }),
+  ]);
+
+  const onlineData = arrivals.map((item) => ({
+    id: item.id,
+    parishId: item.parish.id,
+    parishCode: item.parish.parishCode,
+    parishName: item.parish.parishName,
+    deanery: item.parish.deanery.name,
+    arrivedAt: item.arrivedAt,
+    registrationType: "ONLINE" as const,
+    totalDelegates: null,
+    maleDelegates: null,
+    femaleDelegates: null,
+    checkedInBy:
+      item.checkedInBy.admin?.fullName ??
+      item.checkedInBy.loginId ??
+      item.checkedInBy.email ??
+      "System",
+  }));
+
+  const manualData = manualRegistrations.map((item) => {
+    const allocator = item.accommodations[0]?.allocatedBy;
+    return {
+      id: item.id,
+      parishId: item.parish.id,
+      parishCode: item.parish.parishCode,
+      parishName: item.parish.parishName,
+      deanery: item.parish.deanery.name,
+      arrivedAt: item.accommodationAllocatedAt,
+      registrationType: "MANUAL" as const,
+      totalDelegates: item.totalDelegates,
+      maleDelegates: item.maleDelegates,
+      femaleDelegates: item.femaleDelegates,
+      checkedInBy:
+        allocator?.admin?.fullName ??
+        allocator?.loginId ??
+        allocator?.email ??
+        "System",
+    };
   });
 
   return {
     success: true,
     message: "Arrived parishes retrieved successfully.",
-    data: arrivals.map((item) => ({
-      id: item.id,
-
-      parishId: item.parish.id,
-
-      parishCode: item.parish.parishCode,
-
-      parishName: item.parish.parishName,
-
-      deanery: item.parish.deanery.name,
-
-      arrivedAt: item.arrivedAt,
-
-      checkedInBy:
-        item.checkedInBy.admin?.fullName ??
-        item.checkedInBy.loginId ??
-        item.checkedInBy.email ??
-        "System",
-    })),
+    data: [...onlineData, ...manualData].sort(
+      (a, b) =>
+        new Date(a.arrivedAt ?? 0).getTime() -
+        new Date(b.arrivedAt ?? 0).getTime()
+    ),
   };
 }
 
@@ -329,29 +358,34 @@ export async function getPendingParishes() {
 export async function getParishArrivalDashboard() {
   const event = await getActiveEvent();
 
-  const totalParishes = await prisma.parishAccount.count({
-    where: {
-      eventId: event.id,
-      isActivated: true,
-    },
-  });
+  const [onlineParishes, manualParishes, onlineArrivals, manualArrivals] = await Promise.all([
+    prisma.parishAccount.count({ where: { eventId: event.id, isActivated: true } }),
+    prisma.manualParishRegistration.count({ where: { eventId: event.id } }),
+    prisma.parishArrival.count({ where: { eventId: event.id, arrived: true } }),
+    prisma.manualParishRegistration.count({
+      where: { eventId: event.id, accommodationAllocatedAt: { not: null } },
+    }),
+  ]);
 
-  const arrivedParishes = await prisma.parishArrival.count({
-    where: {
-      eventId: event.id,
-      arrived: true,
-    },
-  });
+  const totalParishes = onlineParishes + manualParishes;
+  const arrivedParishes = onlineArrivals + manualArrivals;
 
   const pendingParishes = totalParishes - arrivedParishes;
 
-  const totalDelegates = await prisma.delegate.count({
-    where: {
-      eventId: event.id,
-    },
-  });
+  const [onlineDelegates, manualTotal, onlineAccommodated, manualAccommodated] = await Promise.all([
+    prisma.delegate.count({ where: { eventId: event.id } }),
+    prisma.manualParishRegistration.aggregate({
+      where: { eventId: event.id },
+      _sum: { totalDelegates: true },
+    }),
+    prisma.accommodation.count({ where: { delegate: { eventId: event.id } } }),
+    prisma.manualDelegateAccommodation.count({
+      where: { registration: { eventId: event.id } },
+    }),
+  ]);
 
-  const accommodatedDelegates = await prisma.accommodation.count();
+  const totalDelegates = onlineDelegates + Number(manualTotal._sum.totalDelegates ?? 0);
+  const accommodatedDelegates = onlineAccommodated + manualAccommodated;
 
   const lastArrival = await prisma.parishArrival.findFirst({
     where: {
@@ -445,4 +479,218 @@ export async function generateParishQr(parishId: string) {
   return await sharp(qrBuffer)
     .png()
     .toBuffer();
+}
+
+export async function getArrivedParishAccommodationDetails(
+  parishId: string,
+  registrationType?: string
+) {
+  const event = await getActiveEvent();
+
+  const arrival = registrationType?.toUpperCase() === "MANUAL"
+    ? null
+    : await prisma.parishArrival.findFirst({
+    where: {
+      eventId: event.id,
+      parishId,
+      arrived: true,
+    },
+    include: {
+      parish: {
+        include: {
+          deanery: true,
+        },
+      },
+      checkedInBy: {
+        include: {
+          admin: true,
+        },
+      },
+    },
+      });
+
+  if (!arrival) {
+    const manual = await prisma.manualParishRegistration.findFirst({
+      where: {
+        eventId: event.id,
+        parishId,
+        accommodationAllocatedAt: { not: null },
+      },
+      include: {
+        parish: { include: { deanery: true } },
+        accommodations: {
+          include: {
+            bed: { include: { hall: { include: { hostel: true } } } },
+            allocatedBy: { include: { admin: true } },
+          },
+          orderBy: [{ gender: "asc" }, { delegatePosition: "asc" }],
+        },
+      },
+    });
+
+    if (!manual) {
+      throw new Error("Arrived parish not found.");
+    }
+
+    const manualLocations = new Map<
+      string,
+      { hostelId: string; hostelName: string; hallId: string; hallName: string; delegateCount: number }
+    >();
+
+    for (const allocation of manual.accommodations) {
+      const { hall } = allocation.bed;
+      const key = `${hall.hostel.id}:${hall.id}`;
+      const existing = manualLocations.get(key);
+      if (existing) existing.delegateCount += 1;
+      else manualLocations.set(key, {
+        hostelId: hall.hostel.id,
+        hostelName: hall.hostel.hostelName,
+        hallId: hall.id,
+        hallName: hall.hallName,
+        delegateCount: 1,
+      });
+    }
+
+    const allocator = manual.accommodations[0]?.allocatedBy;
+    return {
+      success: true,
+      message: "Manual parish accommodation details retrieved successfully.",
+      data: {
+        registrationType: "MANUAL" as const,
+        parish: {
+          id: manual.parish.id,
+          parishCode: manual.parish.parishCode,
+          parishName: manual.parish.parishName,
+          deanery: manual.parish.deanery.name,
+        },
+        arrival: {
+          arrivedAt: manual.accommodationAllocatedAt,
+          checkedInBy:
+            allocator?.admin?.fullName ??
+            allocator?.loginId ??
+            allocator?.email ??
+            "System",
+        },
+        statistics: {
+          totalDelegates: manual.totalDelegates,
+          maleDelegates: manual.maleDelegates,
+          femaleDelegates: manual.femaleDelegates,
+          accommodatedDelegates: manual.accommodations.length,
+          unallocatedDelegates: manual.totalDelegates - manual.accommodations.length,
+        },
+        locations: [...manualLocations.values()].sort((a, b) =>
+          `${a.hostelName}-${a.hallName}`.localeCompare(`${b.hostelName}-${b.hallName}`)
+        ),
+        delegates: manual.accommodations.map((allocation) => ({
+          id: allocation.id,
+          delegateNumber: `${allocation.gender === "MALE" ? "M" : "F"}-${allocation.delegatePosition}`,
+          fullName: `${allocation.gender === "MALE" ? "Male" : "Female"} Delegate ${allocation.delegatePosition}`,
+          gender: allocation.gender,
+          phoneNumber: "",
+          accommodation: {
+            hostel: allocation.bed.hall.hostel.hostelName,
+            hall: allocation.bed.hall.hallName,
+            bedNumber: allocation.bed.bedNumber,
+            allocatedAt: allocation.allocatedAt,
+          },
+        })),
+      },
+    };
+  }
+
+  const delegates = await prisma.delegate.findMany({
+    where: {
+      eventId: event.id,
+      parishId,
+    },
+    include: {
+      accommodation: {
+        include: {
+          bed: {
+            include: {
+              hall: {
+                include: {
+                  hostel: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      fullName: "asc",
+    },
+  });
+
+  const locations = new Map<
+    string,
+    { hostelId: string; hostelName: string; hallId: string; hallName: string; delegateCount: number }
+  >();
+
+  for (const delegate of delegates) {
+    const bed = delegate.accommodation?.bed;
+    if (!bed) continue;
+
+    const key = `${bed.hall.hostel.id}:${bed.hall.id}`;
+    const existing = locations.get(key);
+    if (existing) {
+      existing.delegateCount += 1;
+    } else {
+      locations.set(key, {
+        hostelId: bed.hall.hostel.id,
+        hostelName: bed.hall.hostel.hostelName,
+        hallId: bed.hall.id,
+        hallName: bed.hall.hallName,
+        delegateCount: 1,
+      });
+    }
+  }
+
+  return {
+    success: true,
+    message: "Parish accommodation details retrieved successfully.",
+    data: {
+      registrationType: "ONLINE" as const,
+      parish: {
+        id: arrival.parish.id,
+        parishCode: arrival.parish.parishCode,
+        parishName: arrival.parish.parishName,
+        deanery: arrival.parish.deanery.name,
+      },
+      arrival: {
+        arrivedAt: arrival.arrivedAt,
+        checkedInBy:
+          arrival.checkedInBy.admin?.fullName ??
+          arrival.checkedInBy.loginId ??
+          arrival.checkedInBy.email ??
+          "System",
+      },
+      statistics: {
+        totalDelegates: delegates.length,
+        maleDelegates: delegates.filter((delegate) => delegate.gender === "MALE").length,
+        femaleDelegates: delegates.filter((delegate) => delegate.gender === "FEMALE").length,
+        accommodatedDelegates: delegates.filter((delegate) => delegate.accommodation).length,
+        unallocatedDelegates: delegates.filter((delegate) => !delegate.accommodation).length,
+      },
+      locations: [...locations.values()].sort((a, b) =>
+        `${a.hostelName}-${a.hallName}`.localeCompare(`${b.hostelName}-${b.hallName}`)
+      ),
+      delegates: delegates.map((delegate) => ({
+        id: delegate.id,
+        delegateNumber: delegate.delegateNumber,
+        fullName: delegate.fullName,
+        gender: delegate.gender,
+        phoneNumber: delegate.phoneNumber,
+        accommodation: delegate.accommodation
+          ? {
+              hostel: delegate.accommodation.bed.hall.hostel.hostelName,
+              hall: delegate.accommodation.bed.hall.hallName,
+              bedNumber: delegate.accommodation.bed.bedNumber,
+              allocatedAt: delegate.accommodation.allocatedAt,
+            }
+          : null,
+      })),
+    },
+  };
 }

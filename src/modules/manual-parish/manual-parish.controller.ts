@@ -111,14 +111,16 @@ export const updateManualRegistration = async (
     const {
       presidentName,
       presidentPhone,
-      totalDelegates,
+      maleDelegates,
+      femaleDelegates,
     } = req.body;
 
     const updatedRegistration =
       await manualParishService.updateManualRegistration(id as string, {
         presidentName,
         presidentPhone,
-        totalDelegates,
+        maleDelegates: Number(maleDelegates),
+        femaleDelegates: Number(femaleDelegates),
       });
 
     res.status(200).json({
@@ -156,6 +158,30 @@ export const deleteManualRegistration = async (
       message:
         error.message ||
         "Failed to delete manual parish registration.",
+    });
+  }
+};
+
+export const allocateManualParishAccommodation = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const result =
+      await manualParishService.allocateManualParishAccommodation(
+        req.params.id as string,
+        req.user!.userId
+      );
+
+    res.status(200).json({
+      success: true,
+      message: "Accommodation allocated successfully.",
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
     });
   }
 };

@@ -58,6 +58,26 @@ export async function getArrivedParishes(
   }
 }
 
+export async function getArrivedParishAccommodationDetails(
+  req: Request,
+  res: Response
+) {
+  try {
+    const result =
+      await parishArrivalService.getArrivedParishAccommodationDetails(
+        req.params.parishId as string
+        , String(req.query.type ?? "")
+      );
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 export async function getPendingParishes(
   _req: Request,
   res: Response
