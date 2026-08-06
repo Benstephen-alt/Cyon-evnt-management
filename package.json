@@ -29,6 +29,7 @@
   "dependencies": {
     "@fast-csv/format": "^5.0.7",
     "@prisma/client": "^6.10.1",
+    "africastalking": "^0.8.3",
     "archiver": "^6.0.2",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",

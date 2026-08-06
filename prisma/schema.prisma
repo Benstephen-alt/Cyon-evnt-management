@@ -34,17 +34,18 @@ model User {
   manualParishRegistrations   ManualParishRegistration[]
   gatePassesCheckedOut        GatePass[]                 @relation("GatePassCheckedOutBy")
   gatePassesCheckedIn         GatePass[]                 @relation("GatePassCheckedInBy")
+  notificationCampaigns       NotificationCampaign[]
 }
 
 model Admin {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  fullName    String
-  phoneNumber String?
-  adminPortalAccess Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  fullName          String
+  phoneNumber       String?
+  adminPortalAccess Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Event {
@@ -78,6 +79,7 @@ model Event {
   gatePasses                   GatePass[]
   committeeBadges              CommitteeBadge[]
   committeeBadgeSequence       Int                        @default(0)
+  notificationCampaigns        NotificationCampaign[]
 }
 
 model Deanery {
@@ -456,6 +458,48 @@ model Announcement {
   @@index([eventId])
 }
 
+model NotificationCampaign {
+  id              String                  @id @default(uuid())
+  eventId         String
+  message         String
+  audience        NotificationAudience
+  status          NotificationStatus      @default(PENDING)
+  recipientCount  Int                     @default(0)
+  acceptedCount   Int                     @default(0)
+  failedCount     Int                     @default(0)
+  invalidCount    Int                     @default(0)
+  providerCost    String?
+  createdByUserId String
+  createdAt       DateTime                @default(now())
+  completedAt     DateTime?
+  event           Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdBy       User                    @relation(fields: [createdByUserId], references: [id])
+  recipients      NotificationRecipient[]
+
+  @@index([eventId])
+  @@index([createdByUserId])
+  @@index([createdAt])
+}
+
+model NotificationRecipient {
+  id                String                    @id @default(uuid())
+  campaignId        String
+  phoneNumber       String
+  recipientName     String?
+  recipientType     NotificationRecipientType
+  providerMessageId String?
+  providerStatus    String?
+  deliveryStatus    SmsDeliveryStatus         @default(QUEUED)
+  failureReason     String?
+  providerCost      String?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  campaign          NotificationCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([providerMessageId])
+}
+
 model Complaint {
   id         String          @id @default(uuid())
   eventId    String
@@ -558,6 +602,35 @@ enum UserRole {
   ADMIN
   PARISH
   COMMITTEE
+}
+
+enum NotificationAudience {
+  DELEGATES
+  PRESIDENTS
+  SEMINARIANS
+  MIXED
+}
+
+enum NotificationRecipientType {
+  DELEGATE
+  PRESIDENT
+  SEMINARIAN
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  PARTIALLY_FAILED
+  FAILED
+}
+
+enum SmsDeliveryStatus {
+  QUEUED
+  SENT
+  FAILED
+  DELIVERED
+  REJECTED
 }
 
 enum PaymentStatus {

@@ -48,7 +48,10 @@ const envSchema = z.object({
 
   SMS_PROVIDER: z.string().optional(),
 
-  SMS_API_KEY: z.string().optional()
+  SMS_API_KEY: z.string().optional(),
+  AFRICASTALKING_USERNAME: z.string().optional(),
+  AFRICASTALKING_API_KEY: z.string().optional(),
+  AFRICASTALKING_SENDER_ID: z.string().optional()
 });
 
 const parsed = envSchema.safeParse(process.env);

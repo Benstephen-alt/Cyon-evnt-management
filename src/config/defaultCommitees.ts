@@ -16,6 +16,11 @@ export const DEFAULT_COMMITTEES = [
     permissions: [
       CommitteePermission.ALLOCATE_ACCOMMODATION,
       CommitteePermission.MOVE_ACCOMMODATION,
+      CommitteePermission.VIEW_FINANCE_DASHBOARD,
+      CommitteePermission.CREATE_EXPENSE,
+      CommitteePermission.VIEW_EXPENSES,
+      CommitteePermission.UPDATE_EXPENSE,
+      CommitteePermission.DELETE_EXPENSE,
     ],
   },
 

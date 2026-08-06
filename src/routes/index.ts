@@ -21,6 +21,7 @@ import financeUploadRoutes from "../modules/uploads/upload.routes";
 import manualParishRoutes from "@/modules/manual-parish/manual-parish.routes";
 import securityRoutes from "../modules/security/security.routes"
 import { committeeBadgeRoutes } from "../modules/committee-badge";
+import notificationRoutes from "../modules/notifications/notification.routes";
 
 
 const router = Router();
@@ -147,6 +148,7 @@ router.use("/halls", hallRoutes);
 router.use("/committees", committeeRoutes);
 
 router.use("/committee-badges", committeeBadgeRoutes);
+router.use("/notifications", notificationRoutes);
 
 router.use("/reports", reportsRoutes);
 
