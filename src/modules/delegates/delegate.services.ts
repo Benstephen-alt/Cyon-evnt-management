@@ -7,7 +7,6 @@ import {
 
 import {
   generateDelegateNumber,
-  getActiveEvent,
 } from "@/shared/services"
 
 import { Prisma, } from "@prisma/client";
@@ -183,14 +182,6 @@ export async function updateDelegate(
         "Checked-in delegates cannot be modified."
     );
   }
-
-  const event = await getActiveEvent();
-
-if (!event.registrationOpen) {
-    throw new Error(
-        "Registration has closed."
-    );
-}
 
   const delegate = await prisma.delegate.update({
     where: {
