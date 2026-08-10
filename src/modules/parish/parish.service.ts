@@ -8,10 +8,12 @@ import path from "path";
 import { RegisterParishDto } from "./dto/register-parish.dto";
 import { sendParishRegistrationTelegramNotification } from "../telegram/telegram.service";
 import { AppError } from "@/shared/errors/AppError";
+import { REGISTRATION_CLOSED_MESSAGE } from "@/shared/constants/registration";
 
 
 export async function login(data: ParishLoginRequest) {
   const { accessCode } = data;
+  const event = await getActiveEvent();
 
   const parish = await prisma.parish.findUnique({
     where: {
@@ -19,7 +21,9 @@ export async function login(data: ParishLoginRequest) {
     },
     include: {
       deanery: true,
-      parishAccounts: true,
+      parishAccounts: {
+        where: { eventId: event.id },
+      },
     },
   });
 
@@ -46,6 +50,17 @@ const token = generateToken({
   role: "PARISH",
   portal: "PARISH",
 });
+
+if (
+  !event.registrationOpen &&
+  account.registrationStatus !== "APPROVED"
+) {
+  throw new AppError(
+    403,
+    REGISTRATION_CLOSED_MESSAGE,
+    "REGISTRATION_CLOSED"
+  );
+}
 
   /**
    * Registration has not been submitted.
@@ -385,6 +400,16 @@ export async function registerParish(
   userId: string,
   data: RegisterParishDto
 ) {
+  const event = await getActiveEvent();
+
+  if (!event.registrationOpen) {
+    throw new AppError(
+      403,
+      REGISTRATION_CLOSED_MESSAGE,
+      "REGISTRATION_CLOSED"
+    );
+  }
+
   const account =
     await prisma.parishAccount.findUnique({
       where: {

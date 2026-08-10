@@ -22,6 +22,7 @@ import manualParishRoutes from "@/modules/manual-parish/manual-parish.routes";
 import securityRoutes from "../modules/security/security.routes"
 import { committeeBadgeRoutes } from "../modules/committee-badge";
 import notificationRoutes from "../modules/notifications/notification.routes";
+import feedingRoutes from "../modules/feeding/feeding.routes";
 
 
 const router = Router();
@@ -149,6 +150,7 @@ router.use("/committees", committeeRoutes);
 
 router.use("/committee-badges", committeeBadgeRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/feeding", feedingRoutes);
 
 router.use("/reports", reportsRoutes);
 

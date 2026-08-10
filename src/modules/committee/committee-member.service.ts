@@ -40,6 +40,24 @@ export async function createCommitteeMember(
       },
     });
 
+    const feedingCommittees = await tx.committee.findMany({
+      where: {
+        committeeName: { equals: "Feeding", mode: "insensitive" },
+        event: { isActive: true },
+      },
+      select: { id: true },
+    });
+
+    if (feedingCommittees.length) {
+      await tx.committeeAssignment.createMany({
+        data: feedingCommittees.map((committee) => ({
+          committeeId: committee.id,
+          committeeMemberId: createdMember.id,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
     if (user.role === "ADMIN") {
       await tx.admin.updateMany({
         where: { userId: user.id },

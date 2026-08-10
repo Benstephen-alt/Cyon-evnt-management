@@ -1,4 +1,5 @@
 import prisma from "@/config/prisma";
+import { REGISTRATION_CLOSED_MESSAGE } from "@/shared/constants/registration";
 import { RegistrationStatus } from "@prisma/client";
 import { getActiveEvent } from "@/shared/services/event.service";
 
@@ -50,9 +51,12 @@ export async function validateParishAccess(
     );
   }
 
-  if (!event.registrationOpen) {
+  if (
+    options.requireUnlockedSubmission &&
+    !event.registrationOpen
+  ) {
     throw new Error(
-      "Delegate registration is currently closed."
+      REGISTRATION_CLOSED_MESSAGE
     );
   }
 

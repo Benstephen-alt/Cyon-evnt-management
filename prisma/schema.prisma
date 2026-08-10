@@ -8,34 +8,35 @@ datasource db {
 }
 
 model User {
-  id                          String                     @id @default(uuid())
-  email                       String?                    @unique
-  loginId                     String?                    @unique
-  passwordHash                String
-  role                        UserRole
-  isActive                    Boolean                    @default(true)
-  lastLogin                   DateTime?
-  createdAt                   DateTime                   @default(now())
-  updatedAt                   DateTime                   @updatedAt
-  accommodationAllocations    Accommodation[]
-  admin                       Admin?
-  announcements               Announcement[]
-  auditLogs                   AuditLog[]
-  committeeAssignmentsCreated CommitteeAssignment[]      @relation("CommitteeAssignmentBy")
-  committeeMember             CommitteeMember?
-  delegateCheckIns            Delegate[]                 @relation("DelegateCheckIn")
-  delegateDrafts              DelegateDraft[]
-  fundReleases                FundRelease[]              @relation("FundReleasedBy")
-  incomeRecords               IncomeRecord[]
-  parishAccount               ParishAccount?
-  parishArrivalsChecked       ParishArrival[]
-  searchHistory               SearchHistory[]
-  vendors                     Vendor[]
-  manualParishRegistrations   ManualParishRegistration[]
+  id                             String                        @id @default(uuid())
+  email                          String?                       @unique
+  loginId                        String?                       @unique
+  passwordHash                   String
+  role                           UserRole
+  isActive                       Boolean                       @default(true)
+  lastLogin                      DateTime?
+  createdAt                      DateTime                      @default(now())
+  updatedAt                      DateTime                      @updatedAt
+  accommodationAllocations       Accommodation[]
+  admin                          Admin?
+  announcements                  Announcement[]
+  auditLogs                      AuditLog[]
+  committeeAssignmentsCreated    CommitteeAssignment[]         @relation("CommitteeAssignmentBy")
+  committeeMember                CommitteeMember?
+  delegateCheckIns               Delegate[]                    @relation("DelegateCheckIn")
+  delegateDrafts                 DelegateDraft[]
+  fundReleases                   FundRelease[]                 @relation("FundReleasedBy")
+  incomeRecords                  IncomeRecord[]
+  parishAccount                  ParishAccount?
+  parishArrivalsChecked          ParishArrival[]
+  searchHistory                  SearchHistory[]
+  vendors                        Vendor[]
+  manualParishRegistrations      ManualParishRegistration[]
   manualAccommodationAllocations ManualDelegateAccommodation[]
-  gatePassesCheckedOut        GatePass[]                 @relation("GatePassCheckedOutBy")
-  gatePassesCheckedIn         GatePass[]                 @relation("GatePassCheckedInBy")
-  notificationCampaigns       NotificationCampaign[]
+  gatePassesCheckedOut           GatePass[]                    @relation("GatePassCheckedOutBy")
+  gatePassesCheckedIn            GatePass[]                    @relation("GatePassCheckedInBy")
+  notificationCampaigns          NotificationCampaign[]
+  feedingRequestsReviewed        FeedingRequest[]              @relation("FeedingRequestReviewedBy")
 }
 
 model Admin {
@@ -81,6 +82,7 @@ model Event {
   committeeBadges              CommitteeBadge[]
   committeeBadgeSequence       Int                        @default(0)
   notificationCampaigns        NotificationCampaign[]
+  feedingRequests              FeedingRequest[]
 }
 
 model Deanery {
@@ -179,11 +181,11 @@ model ManualParishRegistration {
   presidentName  String
   presidentPhone String
 
-  totalDelegates Int
-  maleDelegates  Int @default(0)
+  totalDelegates  Int
+  maleDelegates   Int @default(0)
   femaleDelegates Int @default(0)
 
-  delegatesOutside Int @default(0)
+  delegatesOutside         Int       @default(0)
   accommodationAllocatedAt DateTime?
 
   amountPaid Decimal @db.Decimal(12, 2)
@@ -191,9 +193,9 @@ model ManualParishRegistration {
   createdByUserId String?
   createdBy       User?   @relation(fields: [createdByUserId], references: [id])
 
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  gatePasses GatePass[]
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+  gatePasses     GatePass[]
   accommodations ManualDelegateAccommodation[]
 
   @@unique([eventId, parishId])
@@ -266,6 +268,40 @@ model CommitteeMember {
   expenses       Expense[]
   fundReleases   FundRelease[]
   badges         CommitteeBadge[]
+  feedingProfile FeedingProfile?
+}
+
+model FeedingProfile {
+  id                String           @id @default(uuid())
+  committeeMemberId String           @unique
+  fullName          String
+  committeeName     String
+  bankName          String
+  accountNumber     String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  committeeMember   CommitteeMember  @relation(fields: [committeeMemberId], references: [id], onDelete: Cascade)
+  requests          FeedingRequest[]
+
+  @@index([committeeName])
+}
+
+model FeedingRequest {
+  id               String               @id @default(uuid())
+  eventId          String
+  feedingProfileId String
+  status           FeedingRequestStatus @default(PENDING)
+  rejectionReason  String?
+  requestedAt      DateTime             @default(now())
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  event            Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  feedingProfile   FeedingProfile       @relation(fields: [feedingProfileId], references: [id], onDelete: Cascade)
+  reviewedBy       User?                @relation("FeedingRequestReviewedBy", fields: [reviewedByUserId], references: [id])
+
+  @@index([eventId, requestedAt])
+  @@index([feedingProfileId, requestedAt])
+  @@index([eventId, status])
 }
 
 model CommitteeBadge {
@@ -421,30 +457,30 @@ model Hall {
 }
 
 model Bed {
-  id            String         @id @default(uuid())
-  hallId        String
-  bedNumber     Int
-  isOccupied    Boolean        @default(false)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  accommodation Accommodation?
+  id                  String                       @id @default(uuid())
+  hallId              String
+  bedNumber           Int
+  isOccupied          Boolean                      @default(false)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  accommodation       Accommodation?
   manualAccommodation ManualDelegateAccommodation?
-  hall          Hall           @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  hall                Hall                         @relation(fields: [hallId], references: [id], onDelete: Cascade)
 
   @@unique([hallId, bedNumber])
 }
 
 model ManualDelegateAccommodation {
-  id                String   @id @default(uuid())
+  id                String                   @id @default(uuid())
   registrationId    String
-  bedId              String   @unique
-  gender             Gender
-  delegatePosition   Int
-  allocatedByUserId  String
-  allocatedAt        DateTime @default(now())
-  registration       ManualParishRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-  bed                Bed      @relation(fields: [bedId], references: [id], onDelete: Cascade)
-  allocatedBy        User     @relation(fields: [allocatedByUserId], references: [id])
+  bedId             String                   @unique
+  gender            Gender
+  delegatePosition  Int
+  allocatedByUserId String
+  allocatedAt       DateTime                 @default(now())
+  registration      ManualParishRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  bed               Bed                      @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  allocatedBy       User                     @relation(fields: [allocatedByUserId], references: [id])
 
   @@unique([registrationId, gender, delegatePosition])
   @@index([registrationId])
@@ -625,6 +661,12 @@ enum UserRole {
   ADMIN
   PARISH
   COMMITTEE
+}
+
+enum FeedingRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum NotificationAudience {

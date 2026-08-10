@@ -7,6 +7,14 @@ interface ParishRegistrationNotification {
   receiptUrl?: string | null;
 }
 
+interface FeedingRequestNotification {
+  requestId: string;
+  fullName: string;
+  committeeName: string;
+  bankName: string;
+  requestNumberToday: number;
+}
+
 function escapeHtml(
   value: string
 ): string {
@@ -93,5 +101,43 @@ export async function sendParishRegistrationTelegramNotification(
     throw new Error(
       `Telegram notification failed: ${responseBody}`
     );
+  }
+}
+
+export async function sendFeedingRequestTelegramNotification(
+  data: FeedingRequestNotification
+): Promise<void> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!botToken || !chatId) return;
+
+  const text = [
+    "🍽️ <b>New Feeding Request</b>",
+    "",
+    `<b>Name:</b> ${escapeHtml(data.fullName)}`,
+    `<b>Committee:</b> ${escapeHtml(data.committeeName)}`,
+    `<b>Bank:</b> ${escapeHtml(data.bankName)}`,
+    `<b>Request today:</b> ${data.requestNumberToday} of 2`,
+    `<b>Request ID:</b> ${escapeHtml(data.requestId)}`,
+    "",
+    "Open the admin feeding page to approve or reject this request.",
+  ].join("\n");
+
+  const response = await fetch(
+    `https://api.telegram.org/bot${botToken}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Telegram notification failed: ${await response.text()}`);
   }
 }
