@@ -61,6 +61,10 @@ export async function getIncomeRecords() {
     await prisma.incomeRecord.findMany({
       where: {
         eventId: event.id,
+        OR: [
+          { parishAccountId: null },
+          { parishAccount: { isSuperAdminManaged: false } },
+        ],
       },
 
       include: {
@@ -109,9 +113,13 @@ export async function getIncomeRecordById(
   incomeId: string
 ) {
   const income =
-    await prisma.incomeRecord.findUnique({
+    await prisma.incomeRecord.findFirst({
       where: {
         id: incomeId,
+        OR: [
+          { parishAccountId: null },
+          { parishAccount: { isSuperAdminManaged: false } },
+        ],
       },
 
       include: {
@@ -262,6 +270,10 @@ export async function getIncomeStatistics() {
     by: ["source"],
     where: {
       eventId: event.id,
+      OR: [
+        { parishAccountId: null },
+        { parishAccount: { isSuperAdminManaged: false } },
+      ],
     },
     _sum: {
       amount: true,

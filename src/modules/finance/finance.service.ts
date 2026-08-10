@@ -1136,6 +1136,7 @@ export async function getSystemIncome() {
       where: {
         eventId: event.id,
         paymentStatus: "APPROVED",
+        isSuperAdminManaged: false,
       },
     });
 
@@ -1260,6 +1261,10 @@ export async function getAccountSummary() {
 
         where: {
           eventId: event.id,
+          OR: [
+            { parishAccountId: null },
+            { parishAccount: { isSuperAdminManaged: false } },
+          ],
         },
 
         _sum: {

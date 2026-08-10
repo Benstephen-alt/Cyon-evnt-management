@@ -87,6 +87,7 @@ export async function getParishes()  {
   const parishAccounts = await prisma.parishAccount.findMany({
     where: {
       eventId: event.id,
+      isSuperAdminManaged: false,
     },
     include: {
       parish: {
@@ -291,6 +292,7 @@ export async function approveParishRegistrations(
             "Parish registration fee",
 
           recordedByUserId: adminId,
+          parishAccountId: approvedAccount.id,
         },
       });
 
@@ -530,10 +532,20 @@ export async function unlockDelegateSubmission(
 
 
 export async function getAllParishesForAdmin() {
+  const event = await getActiveEvent();
   const parishes = await prisma.parish.findMany({
+    where: {
+      parishAccounts: {
+        none: { eventId: event.id, isSuperAdminManaged: true },
+      },
+    },
     include: {
       deanery: true,
       delegates: true,
+      parishAccounts: {
+        where: { eventId: event.id },
+        select: { id: true, registrationStatus: true },
+      },
     },
     orderBy: {
       parishName: "asc",
@@ -542,10 +554,11 @@ export async function getAllParishesForAdmin() {
 
   return parishes.map((parish) => ({
     id: parish.id,
+    accountId: parish.parishAccounts[0]?.id,
     parishName: parish.parishName,
     parishCode: parish.parishCode,
     deanery: parish.deanery.name,
-    registered: parish.delegates.length > 0,
+    registered: parish.parishAccounts[0]?.registrationStatus === RegistrationStatus.APPROVED,
     delegates: parish.delegates.length,
     badges: parish.delegates.length,
   }));
@@ -611,10 +624,11 @@ export async function getParishDetails(parishId: string) {
 
 
 export async function getPendingRegistrations() {
-
-
+  const event = await getActiveEvent();
   const registrations = await prisma.parishAccount.findMany({
   where: {
+    eventId: event.id,
+    isSuperAdminManaged: false,
     presidentName: {
       not: "",
     },
@@ -652,6 +666,7 @@ export async function getParishDashboards() {
   const registeredParishes = await prisma.parishAccount.count({
     where: {
       registrationStatus: "APPROVED",
+      isSuperAdminManaged: false,
     },
   });
 

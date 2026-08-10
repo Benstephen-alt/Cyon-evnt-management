@@ -23,6 +23,7 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
     prisma.parishAccount.count({
       where: {
         eventId: event.id,
+        isSuperAdminManaged: false,
       },
     }),
 
@@ -30,6 +31,7 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
       where: {
         eventId: event.id,
         registrationStatus: RegistrationStatus.APPROVED,
+        isSuperAdminManaged: false,
       },
     }),
 
@@ -97,6 +99,11 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
     where: {
       eventId: event.id,
       arrived: true,
+      parish: {
+        parishAccounts: {
+          some: { eventId: event.id, isSuperAdminManaged: false },
+        },
+      },
     },
   });
 

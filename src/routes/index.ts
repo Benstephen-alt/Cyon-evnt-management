@@ -23,6 +23,7 @@ import securityRoutes from "../modules/security/security.routes"
 import { committeeBadgeRoutes } from "../modules/committee-badge";
 import notificationRoutes from "../modules/notifications/notification.routes";
 import feedingRoutes from "../modules/feeding/feeding.routes";
+import superAdminRoutes from "../modules/super-admin/super-admin.routes";
 
 
 const router = Router();
@@ -58,6 +59,7 @@ router.use("/delegate-drafts", draftRoutes);
  * ===========================================
  */
 router.use("/admin", adminRoutes);
+router.use("/super-admin", superAdminRoutes);
 
 /**
  * ===========================================

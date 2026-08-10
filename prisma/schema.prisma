@@ -135,6 +135,8 @@ model ParishAccount {
   presidentPhoneNumber     String
   delegateSubmissionLocked Boolean            @default(false)
   registrationStatus       RegistrationStatus @default(PENDING)
+  isSuperAdminManaged      Boolean            @default(false)
+  incomeRecord             IncomeRecord?
   event                    Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
   parish                   Parish             @relation(fields: [parishId], references: [id], onDelete: Cascade)
   user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -620,7 +622,7 @@ model ParishArrival {
 }
 
 model IncomeRecord {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   eventId          String
   source           IncomeSource
   payerName        String
@@ -628,9 +630,11 @@ model IncomeRecord {
   receiptUrl       String?
   remarks          String?
   recordedByUserId String
-  createdAt        DateTime     @default(now())
-  event            Event        @relation(fields: [eventId], references: [id])
-  recordedBy       User         @relation(fields: [recordedByUserId], references: [id])
+  parishAccountId  String?        @unique
+  createdAt        DateTime       @default(now())
+  event            Event          @relation(fields: [eventId], references: [id])
+  recordedBy       User           @relation(fields: [recordedByUserId], references: [id])
+  parishAccount    ParishAccount? @relation(fields: [parishAccountId], references: [id], onDelete: SetNull)
 }
 
 model Vendor {

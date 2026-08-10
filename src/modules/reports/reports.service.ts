@@ -98,12 +98,18 @@ export async function getExecutiveDashboard() {
     prisma.parishArrival.count({
       where: {
         eventId: event.id,
+        parish: {
+          parishAccounts: {
+            some: { eventId: event.id, isSuperAdminManaged: false },
+          },
+        },
       },
     }),
 
     prisma.parishAccount.count({
       where: {
         eventId: event.id,
+        isSuperAdminManaged: false,
       },
     }),
 

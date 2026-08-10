@@ -359,9 +359,19 @@ export async function getParishArrivalDashboard() {
   const event = await getActiveEvent();
 
   const [onlineParishes, manualParishes, onlineArrivals, manualArrivals] = await Promise.all([
-    prisma.parishAccount.count({ where: { eventId: event.id, isActivated: true } }),
+    prisma.parishAccount.count({ where: { eventId: event.id, isActivated: true, isSuperAdminManaged: false } }),
     prisma.manualParishRegistration.count({ where: { eventId: event.id } }),
-    prisma.parishArrival.count({ where: { eventId: event.id, arrived: true } }),
+    prisma.parishArrival.count({
+      where: {
+        eventId: event.id,
+        arrived: true,
+        parish: {
+          parishAccounts: {
+            some: { eventId: event.id, isSuperAdminManaged: false },
+          },
+        },
+      },
+    }),
     prisma.manualParishRegistration.count({
       where: { eventId: event.id, accommodationAllocatedAt: { not: null } },
     }),
