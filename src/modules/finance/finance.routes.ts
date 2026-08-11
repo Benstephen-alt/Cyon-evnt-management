@@ -196,7 +196,9 @@ router.get(
 router.get(
   "/options",
   authenticate,
-  authorize("SUPER_ADMIN", "ADMIN"),
+  authorizePermission(
+    CommitteePermission.VIEW_FINANCE_DASHBOARD
+  ),
   financeController.getCommitteeOptions
 );
 
@@ -204,7 +206,9 @@ router.get(
 router.get(
   "/:committeeId/members",
   authenticate,
-  authorize("SUPER_ADMIN", "ADMIN"),
+  authorizePermission(
+    CommitteePermission.VIEW_FINANCE_DASHBOARD
+  ),
   financeController.getCommitteeMembers
 );
 
@@ -212,7 +216,6 @@ router.get(
 router.get(
   "/committee/member-dashboard/:committeeId",
   authenticate,
-  authorize("SUPER_ADMIN", "ADMIN"),
   financeController.getCommitteeMemberDashboard
 );
 
