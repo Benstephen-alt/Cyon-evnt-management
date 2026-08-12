@@ -11,4 +11,5 @@ router.post("/profile", authenticate, authorizePortal("COMMITTEE"), controller.c
 router.post("/requests", authenticate, authorizePortal("COMMITTEE"), controller.createRequest);
 router.get("/admin", authenticate, authorizePortal("ADMIN"), authorize("SUPER_ADMIN", "ADMIN"), authorizeAdminPortal, controller.adminDashboard);
 router.patch("/admin/requests/:requestId", authenticate, authorizePortal("ADMIN"), authorize("SUPER_ADMIN", "ADMIN"), authorizeAdminPortal, controller.reviewRequest);
+router.delete("/admin/requests", authenticate, authorizePortal("ADMIN"), authorize("SUPER_ADMIN"), authorizeAdminPortal, controller.clearRequestLogs);
 export default router;

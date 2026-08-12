@@ -45,3 +45,21 @@ export async function restoreParish(accountId: string) {
   if (!account) throw new Error("Super admin parish record not found.");
   return prisma.parishAccount.update({ where: { id: account.id }, data: { isSuperAdminManaged: false } });
 }
+
+export async function getDeaneries() {
+  const event = await getActiveEvent();
+  return prisma.deanery.findMany({
+    where: { eventId: event.id },
+    select: {
+      id: true,
+      name: true,
+      _count: {
+        select: {
+          parishes: true,
+          delegates: true,
+        },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+}

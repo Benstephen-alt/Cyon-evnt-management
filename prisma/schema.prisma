@@ -300,6 +300,7 @@ model FeedingRequest {
   event            Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
   feedingProfile   FeedingProfile       @relation(fields: [feedingProfileId], references: [id], onDelete: Cascade)
   reviewedBy       User?                @relation("FeedingRequestReviewedBy", fields: [reviewedByUserId], references: [id])
+  expense          Expense?
 
   @@index([eventId, requestedAt])
   @@index([feedingProfileId, requestedAt])
@@ -394,9 +395,11 @@ model Expense {
   receiptUrl        String?
   createdAt         DateTime        @default(now())
   expenseName       String
+  feedingRequestId  String?         @unique
   committee         Committee       @relation(fields: [committeeId], references: [id], onDelete: Cascade)
   committeeMember   CommitteeMember @relation(fields: [committeeMemberId], references: [id], onDelete: Cascade)
   event             Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  feedingRequest    FeedingRequest?  @relation(fields: [feedingRequestId], references: [id], onDelete: SetNull)
 
   @@index([eventId])
   @@index([committeeId])

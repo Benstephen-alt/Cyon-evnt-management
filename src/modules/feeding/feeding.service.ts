@@ -1,4 +1,4 @@
-import { FeedingRequestStatus } from "@prisma/client";
+import { ExpenseCategory, FeedingRequestStatus, ReceiptType } from "@prisma/client";
 import prisma from "@/config/prisma";
 import { AppError } from "@/shared/errors/AppError";
 import { getActiveEvent } from "../events";
@@ -12,7 +12,24 @@ const profileSelect = {
 const requestInclude = {
   feedingProfile: { select: profileSelect },
   reviewedBy: { select: { admin: { select: { fullName: true } } } },
+  expense: { select: { id: true, amount: true, createdAt: true } },
 } as const;
+
+const FEEDING_REQUEST_AMOUNT = 1_000;
+
+async function getFeedingCommittee(eventId: string) {
+  const committee = await prisma.committee.findFirst({
+    where: {
+      eventId,
+      committeeName: { equals: "Feeding", mode: "insensitive" },
+    },
+    select: { id: true, committeeName: true },
+  });
+  if (!committee) {
+    throw new AppError(404, "Feeding committee has not been created for the active event.", "FEEDING_COMMITTEE_NOT_FOUND");
+  }
+  return committee;
+}
 
 const publicRequestInclude = {
   feedingProfile: {
@@ -127,16 +144,54 @@ export async function requestFeeding(userId: string) {
 
 export async function getAdminDashboard() {
   const event = await getActiveEvent();
+  const feedingCommittee = await getFeedingCommittee(event.id);
   const { start, end } = lagosDayRange();
-  const [profiles, requests, activeRequests] = await Promise.all([
+  const [profiles, requests, activeRequests, released, spent, fundReleases] = await Promise.all([
     prisma.feedingProfile.findMany({ select: profileSelect, orderBy: { createdAt: "desc" } }),
     prisma.feedingRequest.findMany({
       where: { eventId: event.id, requestedAt: { gte: start, lt: end } },
       include: requestInclude, orderBy: { requestedAt: "desc" },
     }),
     prisma.feedingRequest.count({ where: { eventId: event.id, status: FeedingRequestStatus.PENDING } }),
+    prisma.fundRelease.aggregate({
+      where: { eventId: event.id, committeeId: feedingCommittee.id },
+      _sum: { amount: true },
+    }),
+    prisma.expense.aggregate({
+      where: { eventId: event.id, committeeId: feedingCommittee.id },
+      _sum: { amount: true },
+    }),
+    prisma.fundRelease.findMany({
+      where: { eventId: event.id, committeeId: feedingCommittee.id },
+      select: {
+        id: true, amount: true, authority: true, recipientName: true,
+        releasedAt: true, remarks: true, receiptUrl: true,
+      },
+      orderBy: { releasedAt: "desc" },
+    }),
   ]);
-  return { success: true, data: { event: { id: event.id, eventName: event.eventName }, activeRequests, profiles, requests } };
+  const totalReleased = Number(released._sum.amount ?? 0);
+  const totalExpenses = Number(spent._sum.amount ?? 0);
+  return {
+    success: true,
+    data: {
+      event: { id: event.id, eventName: event.eventName },
+      activeRequests,
+      profiles,
+      requests,
+      finances: {
+        committee: feedingCommittee,
+        amountPerApprovedRequest: FEEDING_REQUEST_AMOUNT,
+        totalReleased,
+        totalExpenses,
+        balance: totalReleased - totalExpenses,
+        fundReleases: fundReleases.map((release) => ({
+          ...release,
+          amount: Number(release.amount),
+        })),
+      },
+    },
+  };
 }
 
 export async function reviewRequest(requestId: string, reviewerUserId: string,
@@ -144,18 +199,94 @@ export async function reviewRequest(requestId: string, reviewerUserId: string,
   if (status === "REJECTED" && !rejectionReason?.trim()) {
     throw new AppError(400, "A rejection reason is required.", "REJECTION_REASON_REQUIRED");
   }
-  const existing = await prisma.feedingRequest.findUnique({ where: { id: requestId } });
-  if (!existing) throw new AppError(404, "Feeding request not found.", "FEEDING_REQUEST_NOT_FOUND");
-  if (existing.status !== FeedingRequestStatus.PENDING) {
-    throw new AppError(409, "This feeding request has already been reviewed.", "FEEDING_REQUEST_REVIEWED");
-  }
-  const request = await prisma.feedingRequest.update({
-    where: { id: requestId },
-    data: {
-      status, rejectionReason: status === "REJECTED" ? rejectionReason!.trim() : null,
-      reviewedAt: new Date(), reviewedByUserId: reviewerUserId,
-    },
-    include: requestInclude,
-  });
+  const request = await prisma.$transaction(async (tx) => {
+    const existing = await tx.feedingRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        feedingProfile: { select: { committeeMemberId: true, fullName: true } },
+        expense: { select: { id: true } },
+      },
+    });
+    if (!existing) throw new AppError(404, "Feeding request not found.", "FEEDING_REQUEST_NOT_FOUND");
+    if (existing.status !== FeedingRequestStatus.PENDING || existing.expense) {
+      throw new AppError(409, "This feeding request has already been reviewed.", "FEEDING_REQUEST_REVIEWED");
+    }
+
+    if (status === "APPROVED") {
+      const committee = await tx.committee.findFirst({
+        where: {
+          eventId: existing.eventId,
+          committeeName: { equals: "Feeding", mode: "insensitive" },
+        },
+        select: { id: true },
+      });
+      if (!committee) {
+        throw new AppError(404, "Feeding committee has not been created for the active event.", "FEEDING_COMMITTEE_NOT_FOUND");
+      }
+      const [released, spent] = await Promise.all([
+        tx.fundRelease.aggregate({
+          where: { eventId: existing.eventId, committeeId: committee.id },
+          _sum: { amount: true },
+        }),
+        tx.expense.aggregate({
+          where: { eventId: existing.eventId, committeeId: committee.id },
+          _sum: { amount: true },
+        }),
+      ]);
+      const balance = Number(released._sum.amount ?? 0) - Number(spent._sum.amount ?? 0);
+      if (balance < FEEDING_REQUEST_AMOUNT) {
+        throw new AppError(
+          400,
+          `Insufficient Feeding committee funds. Available balance is ₦${balance.toLocaleString()}.`,
+          "INSUFFICIENT_FEEDING_FUNDS"
+        );
+      }
+      await tx.expense.create({
+        data: {
+          eventId: existing.eventId,
+          committeeId: committee.id,
+          committeeMemberId: existing.feedingProfile.committeeMemberId,
+          category: ExpenseCategory.FOOD,
+          amount: FEEDING_REQUEST_AMOUNT,
+          description: `Feeding allowance approved for ${existing.feedingProfile.fullName}`,
+          receiptType: ReceiptType.CASH,
+          expenseName: "Approved feeding request",
+          feedingRequestId: existing.id,
+        },
+      });
+    }
+
+    return tx.feedingRequest.update({
+      where: { id: requestId },
+      data: {
+        status,
+        rejectionReason: status === "REJECTED" ? rejectionReason!.trim() : null,
+        reviewedAt: new Date(),
+        reviewedByUserId: reviewerUserId,
+      },
+      include: requestInclude,
+    });
+  }, { isolationLevel: "Serializable" });
   return { success: true, message: `Feeding request ${status.toLowerCase()} successfully.`, data: request };
+}
+
+export async function clearRequestLogs() {
+  const event = await getActiveEvent();
+  const result = await prisma.$transaction(async (tx) => {
+    const requestIds = await tx.feedingRequest.findMany({
+      where: { eventId: event.id },
+      select: { id: true },
+    });
+    const ids = requestIds.map((request) => request.id);
+    if (ids.length) {
+      await tx.expense.deleteMany({ where: { feedingRequestId: { in: ids } } });
+    }
+    return tx.feedingRequest.deleteMany({ where: { eventId: event.id } });
+  });
+
+  return {
+    success: true,
+    message: `${result.count} feeding request log${result.count === 1 ? "" : "s"} cleared successfully.`,
+    data: { deletedCount: result.count },
+  };
 }

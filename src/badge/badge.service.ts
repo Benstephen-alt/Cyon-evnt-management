@@ -256,3 +256,68 @@ export async function downloadParishBadges(parishId: string) {
 export async function downloadAdminParishBadges(parishId: string) {
   return downloadParishBadges(parishId);
 }
+
+function zipSafeName(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "Unnamed";
+}
+
+export async function downloadDeaneryBadges(deaneryId: string) {
+  const event = await getActiveEvent();
+  const deanery = await prisma.deanery.findFirst({
+    where: { id: deaneryId, eventId: event.id },
+    include: {
+      parishes: {
+        where: {
+          delegates: {
+            some: { eventId: event.id },
+          },
+        },
+        orderBy: { parishName: "asc" },
+        include: {
+          delegates: {
+            where: { eventId: event.id },
+            orderBy: { delegateNumber: "asc" },
+            select: { id: true, delegateNumber: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!deanery) throw new Error("Deanery not found for the active event.");
+
+  const delegateCount = deanery.parishes.reduce(
+    (total, parish) => total + parish.delegates.length,
+    0
+  );
+  if (delegateCount === 0) throw new Error("No registered delegates found in this deanery.");
+
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  const stream = new PassThrough();
+  archive.on("error", (error: Error) => stream.destroy(error));
+  archive.pipe(stream);
+
+  for (const parish of deanery.parishes) {
+    const parishFolder = zipSafeName(parish.parishName);
+
+    for (const delegate of parish.delegates) {
+      const badge = await generateBadge(delegate.id);
+      archive.append(badge, {
+        name: `${parishFolder}/${zipSafeName(delegate.delegateNumber)}.png`,
+      });
+    }
+  }
+
+  void archive.finalize();
+  return {
+    stream,
+    fileName: `${zipSafeName(deanery.name)}-Deanery-Badges.zip`,
+    deaneryName: deanery.name,
+    parishCount: deanery.parishes.length,
+    delegateCount,
+  };
+}

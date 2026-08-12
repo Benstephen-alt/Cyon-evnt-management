@@ -108,8 +108,13 @@ export async function sendFeedingRequestTelegramNotification(
   data: FeedingRequestNotification
 ): Promise<void> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!botToken || !chatId) return;
+  const chatId = process.env.TELEGRAM_FEEDING_CHAT_ID;
+  if (!botToken || !chatId) {
+    console.warn(
+      "Telegram bot token or feeding chat ID is missing."
+    );
+    return;
+  }
 
   const text = [
     "🍽️ <b>New Feeding Request</b>",

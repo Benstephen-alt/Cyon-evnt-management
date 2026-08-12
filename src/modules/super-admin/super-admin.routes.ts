@@ -8,6 +8,8 @@ import * as controller from "./super-admin.controller";
 const router = Router();
 router.use(authenticate, authorizePortal("ADMIN"), authorize("SUPER_ADMIN"), authorizeAdminPortal);
 router.get("/parishes", controller.list);
+router.get("/deaneries", controller.deaneries);
+router.get("/deaneries/:deaneryId/badges/download", controller.downloadDeaneryBadgeZip);
 router.patch("/parishes/:accountId/move", controller.move);
 router.patch("/parishes/:accountId/restore", controller.restore);
 export default router;

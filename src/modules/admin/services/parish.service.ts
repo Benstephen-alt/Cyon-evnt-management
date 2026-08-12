@@ -87,7 +87,6 @@ export async function getParishes()  {
   const parishAccounts = await prisma.parishAccount.findMany({
     where: {
       eventId: event.id,
-      isSuperAdminManaged: false,
     },
     include: {
       parish: {
@@ -331,14 +330,17 @@ export async function rejectParish(
 }
 
 export async function resetParishCheckIn(
-  parishId: string
+  parishIdentifier: string
 ) {
   const event = await getActiveEvent();
 
   const account = await prisma.parishAccount.findFirst({
     where: {
-      parishId,
       eventId: event.id,
+      OR: [
+        { parishId: parishIdentifier },
+        { id: parishIdentifier },
+      ],
     },
     include: {
       parish: true,
@@ -352,6 +354,8 @@ export async function resetParishCheckIn(
   if (account.registrationStatus !== RegistrationStatus.APPROVED) {
     throw new Error("Only an approved parish check-in can be reset.");
   }
+
+  const parishId = account.parishId;
 
   return prisma.$transaction(async (tx) => {
     const delegates = await tx.delegate.findMany({
@@ -534,11 +538,6 @@ export async function unlockDelegateSubmission(
 export async function getAllParishesForAdmin() {
   const event = await getActiveEvent();
   const parishes = await prisma.parish.findMany({
-    where: {
-      parishAccounts: {
-        none: { eventId: event.id, isSuperAdminManaged: true },
-      },
-    },
     include: {
       deanery: true,
       delegates: true,
@@ -579,9 +578,18 @@ export async function getParishDetails(parishId: string) {
       },
 
       parishAccounts: {
-        include: {
-          event: true,
+        select: {
+          id: true,
+          registrationStatus: true,
+          event: {
+            select: {
+              id: true,
+              eventName: true,
+              isActive: true,
+            },
+          },
         },
+        orderBy: { createdAt: "desc" },
       },
     },
   });

@@ -24,3 +24,7 @@ export async function reviewRequest(req: Request, res: Response, next: NextFunct
       req.user!.userId, status, req.body.rejectionReason));
   } catch (error) { next(error); }
 }
+
+export async function clearRequestLogs(_req: Request, res: Response, next: NextFunction) {
+  try { res.json(await service.clearRequestLogs()); } catch (error) { next(error); }
+}
