@@ -31,3 +31,7 @@ export interface UpdateEventDto {
 export interface UpdateRegistrationStatusDto {
   registrationOpen: boolean;
 }
+
+export interface UpdateDelegateRegistrationStatusDto {
+  delegateRegistrationOpen: boolean;
+}

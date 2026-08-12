@@ -136,3 +136,15 @@ export async function getActiveEvent(
    
   }
 }
+
+export async function updateDelegateRegistrationStatus(req: Request, res: Response) {
+  try {
+    const result = await eventService.updateDelegateRegistrationStatus(
+      req.params.id as string,
+      req.body
+    );
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}

@@ -10,6 +10,7 @@ import { createEvent,
          updateEvent,
           activateEvent,
           updateRegistrationStatus,
+          updateDelegateRegistrationStatus,
           getActiveEvent
         } from "./event.controller";
 
@@ -65,6 +66,13 @@ router.put(
   authenticate,
   authorize("SUPER_ADMIN", "ADMIN"),
   updateRegistrationStatus
+);
+
+router.put(
+  "/:id/delegate-registration",
+  authenticate,
+  authorize("SUPER_ADMIN", "ADMIN"),
+  updateDelegateRegistrationStatus
 );
 
 export default router;

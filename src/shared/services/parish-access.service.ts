@@ -51,6 +51,13 @@ export async function validateParishAccess(
   }
 
   if (
+    options.requireUnlockedSubmission &&
+    !event.delegateRegistrationOpen
+  ) {
+    throw new Error("Delegate registration has been stopped by the administrator.");
+  }
+
+  if (
     event.delegateRegistrationDeadline &&
     new Date() > event.delegateRegistrationDeadline
   ) {

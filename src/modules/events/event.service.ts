@@ -216,3 +216,24 @@ export async function updateRegistrationStatus(
     event: updated,
   };
 }
+
+export async function updateDelegateRegistrationStatus(
+  id: string,
+  data: { delegateRegistrationOpen: boolean }
+) {
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) throw new Error("Event not found.");
+
+  const updated = await prisma.event.update({
+    where: { id },
+    data: { delegateRegistrationOpen: data.delegateRegistrationOpen },
+  });
+
+  return {
+    success: true,
+    message: data.delegateRegistrationOpen
+      ? "Delegate registration resumed successfully."
+      : "Delegate registration stopped successfully.",
+    event: updated,
+  };
+}
