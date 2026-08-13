@@ -645,19 +645,32 @@ export async function getArrivedParishAccommodationDetails(
         locations: [...manualLocations.values()].sort((a, b) =>
           `${a.hostelName}-${a.hallName}`.localeCompare(`${b.hostelName}-${b.hallName}`)
         ),
-        delegates: manual.accommodations.map((allocation) => ({
-          id: allocation.id,
-          delegateNumber: `${allocation.gender === "MALE" ? "M" : "F"}-${allocation.delegatePosition}`,
-          fullName: `${allocation.gender === "MALE" ? "Male" : "Female"} Delegate ${allocation.delegatePosition}`,
-          gender: allocation.gender,
-          phoneNumber: "",
-          accommodation: {
-            hostel: allocation.bed.hall.hostel.hostelName,
-            hall: allocation.bed.hall.hallName,
-            bedNumber: allocation.bed.bedNumber,
-            allocatedAt: allocation.allocatedAt,
-          },
-        })),
+        delegates: [
+          ...Array.from({ length: manual.maleDelegates }, (_, index) => {
+            const position = index + 1;
+            const allocation = manual.accommodations.find((item) => item.gender === Gender.MALE && item.delegatePosition === position);
+            return {
+              id: allocation?.id ?? `manual-${manual.id}-male-${position}`,
+              delegateNumber: `M-${position}`,
+              fullName: `Male Delegate ${position}`,
+              gender: Gender.MALE,
+              phoneNumber: "",
+              accommodation: allocation ? { hostel: allocation.bed.hall.hostel.hostelName, hall: allocation.bed.hall.hallName, bedNumber: allocation.bed.bedNumber, allocatedAt: allocation.allocatedAt } : null,
+            };
+          }),
+          ...Array.from({ length: manual.femaleDelegates }, (_, index) => {
+            const position = index + 1;
+            const allocation = manual.accommodations.find((item) => item.gender === Gender.FEMALE && item.delegatePosition === position);
+            return {
+              id: allocation?.id ?? `manual-${manual.id}-female-${position}`,
+              delegateNumber: `F-${position}`,
+              fullName: `Female Delegate ${position}`,
+              gender: Gender.FEMALE,
+              phoneNumber: "",
+              accommodation: allocation ? { hostel: allocation.bed.hall.hostel.hostelName, hall: allocation.bed.hall.hallName, bedNumber: allocation.bed.bedNumber, allocatedAt: allocation.allocatedAt } : null,
+            };
+          }),
+        ],
       },
     };
   }

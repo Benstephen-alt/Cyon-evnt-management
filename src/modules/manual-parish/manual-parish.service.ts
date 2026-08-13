@@ -312,18 +312,6 @@ export const allocateManualParishAccommodation = async (
         getAvailableBeds(tx, activeEvent.id, Gender.FEMALE, registration.femaleDelegates),
       ]);
 
-      if (maleBeds.length < registration.maleDelegates) {
-        throw new Error(
-          `Only ${maleBeds.length} male bed(s) are available; ${registration.maleDelegates} are required.`
-        );
-      }
-
-      if (femaleBeds.length < registration.femaleDelegates) {
-        throw new Error(
-          `Only ${femaleBeds.length} female bed(s) are available; ${registration.femaleDelegates} are required.`
-        );
-      }
-
       const allocations = [
         ...maleBeds.map((bed, index) => ({
           registrationId: registration.id,
@@ -364,6 +352,7 @@ export const allocateManualParishAccommodation = async (
         maleDelegates: registration.maleDelegates,
         femaleDelegates: registration.femaleDelegates,
         allocatedBeds: allocations.length,
+        manualAllocationRequired: registration.totalDelegates - allocations.length,
       };
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
