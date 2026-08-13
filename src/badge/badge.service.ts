@@ -314,10 +314,8 @@ export async function downloadDeaneryBadges(deaneryId: string) {
   );
   if (delegateCount === 0) throw new Error("No registered delegates found in this deanery.");
 
-  const archive = archiver("zip", { zlib: { level: 9 } });
-  const stream = new PassThrough();
-  archive.on("error", (error: Error) => stream.destroy(error));
-  archive.pipe(stream);
+  const generated: Array<{ badge: Buffer; fileName: string }> = [];
+  const skipped: string[] = [];
 
   for (const parish of deanery.parishes) {
     const parishFolder = zipSafeName(parish.parishName);
@@ -328,14 +326,43 @@ export async function downloadDeaneryBadges(deaneryId: string) {
         badge = await generateBadge(delegate.id);
       } catch (error) {
         const reason = error instanceof Error ? error.message : "Unknown badge generation error.";
-        throw new Error(
-          `Badge generation failed for ${delegate.delegateNumber?.trim() || delegate.id} (${delegate.fullName?.trim() || "unnamed delegate"}) in ${parish.parishName}: ${reason}`
+        skipped.push(
+          `${delegate.delegateNumber?.trim() || delegate.id} | ${delegate.fullName?.trim() || "UNNAMED DELEGATE"} | ${parish.parishName} | ${reason}`
         );
+        continue;
       }
-      archive.append(badge, {
-        name: `${parishFolder}/${zipSafeName(delegate.delegateNumber)}.png`,
+      generated.push({
+        badge,
+        fileName: `${parishFolder}/${zipSafeName(delegate.delegateNumber)}.png`,
       });
     }
+  }
+
+  if (!generated.length) {
+    throw new Error(
+      `No badges could be generated for ${deanery.name}. ${skipped[0] ?? "All delegate records are incomplete."}`
+    );
+  }
+
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  const stream = new PassThrough();
+  archive.on("error", (error: Error) => stream.destroy(error));
+  archive.pipe(stream);
+
+  for (const item of generated) {
+    archive.append(item.badge, { name: item.fileName });
+  }
+
+  if (skipped.length) {
+    archive.append(
+      [
+        `${deanery.name} - Skipped Badge Records`,
+        "The following records were not included because required badge data is missing or invalid.",
+        "",
+        ...skipped,
+      ].join("\r\n"),
+      { name: "_Skipped-Badges.txt" }
+    );
   }
 
   void archive.finalize();
@@ -344,6 +371,7 @@ export async function downloadDeaneryBadges(deaneryId: string) {
     fileName: `${zipSafeName(deanery.name)}-Deanery-Badges.zip`,
     deaneryName: deanery.name,
     parishCount: deanery.parishes.length,
-    delegateCount,
+    delegateCount: generated.length,
+    skippedCount: skipped.length,
   };
 }
