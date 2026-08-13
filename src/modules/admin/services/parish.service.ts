@@ -362,7 +362,7 @@ export async function resetParishCheckIn(
       where: { parishArrival: { parishId, eventId: event.id } },
       select: { bedId: true },
     });
-    const extraBedIds = extraAllocations.map((item) => item.bedId);
+    const extraBedIds = extraAllocations.map((item) => item.bedId).filter((id): id is string => Boolean(id));
     const delegates = await tx.delegate.findMany({
       where: {
         parishId,
@@ -392,7 +392,6 @@ export async function resetParishCheckIn(
     }
 
     if (extraBedIds.length > 0) {
-      await tx.arrivalExtraDelegate.deleteMany({ where: { bedId: { in: extraBedIds } } });
       await tx.bed.updateMany({ where: { id: { in: extraBedIds } }, data: { isOccupied: false } });
     }
 

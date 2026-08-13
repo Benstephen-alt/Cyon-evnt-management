@@ -650,13 +650,13 @@ model ParishArrival {
 model ArrivalExtraDelegate {
   id                String        @id @default(uuid())
   parishArrivalId   String
-  bedId             String        @unique
+  bedId             String?       @unique
   gender            Gender
   delegatePosition  Int
   allocatedByUserId String
   allocatedAt       DateTime      @default(now())
   parishArrival     ParishArrival @relation(fields: [parishArrivalId], references: [id], onDelete: Cascade)
-  bed               Bed           @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  bed               Bed?          @relation(fields: [bedId], references: [id], onDelete: SetNull)
   allocatedBy       User          @relation(fields: [allocatedByUserId], references: [id])
 
   @@unique([parishArrivalId, gender, delegatePosition])
