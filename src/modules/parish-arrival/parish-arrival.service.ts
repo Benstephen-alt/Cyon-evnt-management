@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import sharp from "sharp";
 import { generateQrToken } from "@/shared/utils/qr-token";
 import * as accommodationService from "@/modules/accommodation/accommodation.service";
+import { Gender, Prisma } from "@prisma/client";
 
 export async function getParishArrivalSummary(
   parishId: string
@@ -36,20 +37,6 @@ export async function getParishArrivalSummary(
     },
   });
 
-  const totalDelegates = delegates.length;
-
-  const maleDelegates = delegates.filter(
-    (d) => d.gender.toUpperCase() === "MALE"
-  ).length;
-
-  const femaleDelegates = delegates.filter(
-    (d) => d.gender.toUpperCase() === "FEMALE"
-  ).length;
-
-  const accommodatedDelegates = delegates.filter(
-    (d) => d.accommodation
-  ).length;
-
   // Arrival record
   const arrival = await prisma.parishArrival.findUnique({
     where: {
@@ -70,6 +57,13 @@ export async function getParishArrivalSummary(
       },
     },
   });
+
+  const additionalMale = arrival?.additionalMaleDelegates ?? 0;
+  const additionalFemale = arrival?.additionalFemaleDelegates ?? 0;
+  const totalDelegates = delegates.length + additionalMale + additionalFemale;
+  const maleDelegates = delegates.filter((d) => d.gender === Gender.MALE).length + additionalMale;
+  const femaleDelegates = delegates.filter((d) => d.gender === Gender.FEMALE).length + additionalFemale;
+  const accommodatedDelegates = delegates.filter((d) => d.accommodation).length + additionalMale + additionalFemale;
 
   return {
     success: true,
@@ -106,8 +100,13 @@ import { NoAvailableBedError } from "@/shared/errors/no-available-bed.error";
 
 export async function markParishArrived(
   parishId: string,
-  checkedInByUserId: string
+  checkedInByUserId: string,
+  additionalMaleDelegates = 0,
+  additionalFemaleDelegates = 0
 ) {
+  if (!Number.isInteger(additionalMaleDelegates) || additionalMaleDelegates < 0 || !Number.isInteger(additionalFemaleDelegates) || additionalFemaleDelegates < 0) {
+    throw new Error("Additional male and female delegate counts must be whole numbers of zero or more.");
+  }
   // Active event
   const event = await getActiveEvent();
 
@@ -128,6 +127,7 @@ export async function markParishArrived(
       parishId,
       eventId: event.id,
     },
+    include: { accommodation: true },
   });
 
   // Check if already arrived
@@ -144,6 +144,15 @@ export async function markParishArrived(
     throw new Error("Parish has already arrived.");
   }
 
+  const requiredMaleBeds = delegates.filter((d) => d.gender === Gender.MALE && !d.accommodation).length + additionalMaleDelegates;
+  const requiredFemaleBeds = delegates.filter((d) => d.gender === Gender.FEMALE && !d.accommodation).length + additionalFemaleDelegates;
+  const [maleBedsAvailable, femaleBedsAvailable] = await Promise.all([
+    prisma.bed.count({ where: { isOccupied: false, hall: { hostel: { eventId: event.id, gender: Gender.MALE } } } }),
+    prisma.bed.count({ where: { isOccupied: false, hall: { hostel: { eventId: event.id, gender: Gender.FEMALE } } } }),
+  ]);
+  if (maleBedsAvailable < requiredMaleBeds) throw new Error(`Only ${maleBedsAvailable} male bed(s) are available; ${requiredMaleBeds} are required.`);
+  if (femaleBedsAvailable < requiredFemaleBeds) throw new Error(`Only ${femaleBedsAvailable} female bed(s) are available; ${requiredFemaleBeds} are required.`);
+
   // Update or create arrival record
   let arrival;
 
@@ -156,6 +165,8 @@ export async function markParishArrived(
         arrived: true,
         arrivedAt: new Date(),
         checkedInByUserId,
+        additionalMaleDelegates,
+        additionalFemaleDelegates,
       },
     });
   } else {
@@ -166,6 +177,8 @@ export async function markParishArrived(
         arrived: true,
         arrivedAt: new Date(),
         checkedInByUserId,
+        additionalMaleDelegates,
+        additionalFemaleDelegates,
       },
     });
   }
@@ -202,6 +215,19 @@ export async function markParishArrived(
     }
   }
 
+  const additionalCount = additionalMaleDelegates + additionalFemaleDelegates;
+  if (additionalCount) {
+    await prisma.$transaction(async (tx) => {
+      const availableBeds = (gender: Gender, count: number) => tx.bed.findMany({ where: { isOccupied: false, hall: { hostel: { eventId: event.id, gender } } }, orderBy: [{ hall: { hostel: { hostelName: "asc" } } }, { hall: { hallName: "asc" } }, { bedNumber: "asc" }], take: count });
+      const [maleBeds, femaleBeds] = await Promise.all([availableBeds(Gender.MALE, additionalMaleDelegates), availableBeds(Gender.FEMALE, additionalFemaleDelegates)]);
+      if (maleBeds.length !== additionalMaleDelegates || femaleBeds.length !== additionalFemaleDelegates) throw new Error("Some required beds are no longer available. Please try again.");
+      const allocations = [...maleBeds.map((bed, index) => ({ parishArrivalId: arrival.id, bedId: bed.id, gender: Gender.MALE, delegatePosition: index + 1, allocatedByUserId: checkedInByUserId })), ...femaleBeds.map((bed, index) => ({ parishArrivalId: arrival.id, bedId: bed.id, gender: Gender.FEMALE, delegatePosition: index + 1, allocatedByUserId: checkedInByUserId }))];
+      const occupied = await tx.bed.updateMany({ where: { id: { in: allocations.map((item) => item.bedId) }, isOccupied: false }, data: { isOccupied: true } });
+      if (occupied.count !== allocations.length) throw new Error("Some selected beds are no longer available. Please try again.");
+      await tx.arrivalExtraDelegate.createMany({ data: allocations });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   // Mark all delegates as checked in
   await prisma.delegate.updateMany({
     where: {
@@ -217,11 +243,27 @@ export async function markParishArrived(
     success: true,
     message: "Parish arrival confirmed successfully.",
 
+    data: {
+      parishName: parish.parishName,
+      totalDelegates: delegates.length + additionalCount,
+      autoAllocated: automaticallyAllocated + additionalCount,
+      manualAllocation: manualAllocation.length,
+      manualDelegates: manualAllocation.map((delegate) => ({
+        id: delegate.delegateId,
+        fullName: delegate.fullName,
+        gender: delegates.find((item) => item.id === delegate.delegateId)?.gender ?? "",
+      })),
+      additionalMaleDelegates,
+      additionalFemaleDelegates,
+    },
+
     arrival,
 
     accommodation: {
-      totalDelegates: delegates.length,
-      automaticallyAllocated,
+      totalDelegates: delegates.length + additionalCount,
+      automaticallyAllocated: automaticallyAllocated + additionalCount,
+      additionalMaleDelegates,
+      additionalFemaleDelegates,
       manualAllocationRequired: manualAllocation.length,
       manualAllocation,
     },
@@ -234,7 +276,7 @@ export async function getArrivedParishes() {
     prisma.parishArrival.findMany({
       where: { eventId: event.id, arrived: true },
       include: {
-        parish: { include: { deanery: true } },
+        parish: { include: { deanery: true, delegates: { where: { eventId: event.id }, select: { gender: true } } } },
         checkedInBy: { include: { admin: true } },
       },
       orderBy: { arrivedAt: "asc" },
@@ -264,9 +306,9 @@ export async function getArrivedParishes() {
     deanery: item.parish.deanery.name,
     arrivedAt: item.arrivedAt,
     registrationType: "ONLINE" as const,
-    totalDelegates: null,
-    maleDelegates: null,
-    femaleDelegates: null,
+    totalDelegates: item.parish.delegates.length + item.additionalMaleDelegates + item.additionalFemaleDelegates,
+    maleDelegates: item.parish.delegates.filter((delegate) => delegate.gender === Gender.MALE).length + item.additionalMaleDelegates,
+    femaleDelegates: item.parish.delegates.filter((delegate) => delegate.gender === Gender.FEMALE).length + item.additionalFemaleDelegates,
     checkedInBy:
       item.checkedInBy.admin?.fullName ??
       item.checkedInBy.loginId ??
@@ -516,6 +558,10 @@ export async function getArrivedParishAccommodationDetails(
           admin: true,
         },
       },
+      additionalDelegates: {
+        include: { bed: { include: { hall: { include: { hostel: true } } } } },
+        orderBy: [{ gender: "asc" }, { delegatePosition: "asc" }],
+      },
     },
       });
 
@@ -657,6 +703,17 @@ export async function getArrivedParishAccommodationDetails(
     }
   }
 
+  for (const extra of arrival.additionalDelegates) {
+    const hall = extra.bed.hall;
+    const key = `${hall.hostel.id}:${hall.id}`;
+    const existing = locations.get(key);
+    if (existing) existing.delegateCount += 1;
+    else locations.set(key, { hostelId: hall.hostel.id, hostelName: hall.hostel.hostelName, hallId: hall.id, hallName: hall.hallName, delegateCount: 1 });
+  }
+
+  const additionalMale = arrival.additionalMaleDelegates;
+  const additionalFemale = arrival.additionalFemaleDelegates;
+
   return {
     success: true,
     message: "Parish accommodation details retrieved successfully.",
@@ -677,16 +734,16 @@ export async function getArrivedParishAccommodationDetails(
           "System",
       },
       statistics: {
-        totalDelegates: delegates.length,
-        maleDelegates: delegates.filter((delegate) => delegate.gender === "MALE").length,
-        femaleDelegates: delegates.filter((delegate) => delegate.gender === "FEMALE").length,
-        accommodatedDelegates: delegates.filter((delegate) => delegate.accommodation).length,
+        totalDelegates: delegates.length + additionalMale + additionalFemale,
+        maleDelegates: delegates.filter((delegate) => delegate.gender === "MALE").length + additionalMale,
+        femaleDelegates: delegates.filter((delegate) => delegate.gender === "FEMALE").length + additionalFemale,
+        accommodatedDelegates: delegates.filter((delegate) => delegate.accommodation).length + arrival.additionalDelegates.length,
         unallocatedDelegates: delegates.filter((delegate) => !delegate.accommodation).length,
       },
       locations: [...locations.values()].sort((a, b) =>
         `${a.hostelName}-${a.hallName}`.localeCompare(`${b.hostelName}-${b.hallName}`)
       ),
-      delegates: delegates.map((delegate) => ({
+      delegates: [...delegates.map((delegate) => ({
         id: delegate.id,
         delegateNumber: delegate.delegateNumber,
         fullName: delegate.fullName,
@@ -700,7 +757,14 @@ export async function getArrivedParishAccommodationDetails(
               allocatedAt: delegate.accommodation.allocatedAt,
             }
           : null,
-      })),
+      })), ...arrival.additionalDelegates.map((extra) => ({
+        id: extra.id,
+        delegateNumber: `EXTRA-${extra.gender === "MALE" ? "M" : "F"}-${extra.delegatePosition}`,
+        fullName: `Unregistered ${extra.gender === "MALE" ? "Male" : "Female"} Delegate ${extra.delegatePosition}`,
+        gender: extra.gender,
+        phoneNumber: "",
+        accommodation: { hostel: extra.bed.hall.hostel.hostelName, hall: extra.bed.hall.hallName, bedNumber: extra.bed.bedNumber, allocatedAt: extra.allocatedAt },
+      }))],
     },
   };
 }

@@ -29,6 +29,7 @@ model User {
   incomeRecords                  IncomeRecord[]
   parishAccount                  ParishAccount?
   parishArrivalsChecked          ParishArrival[]
+  arrivalExtraAllocations        ArrivalExtraDelegate[]
   searchHistory                  SearchHistory[]
   vendors                        Vendor[]
   manualParishRegistrations      ManualParishRegistration[]
@@ -488,6 +489,7 @@ model Bed {
   updatedAt           DateTime                     @updatedAt
   accommodation       Accommodation?
   manualAccommodation ManualDelegateAccommodation?
+  arrivalExtraAccommodation ArrivalExtraDelegate?
   hall                Hall                         @relation(fields: [hallId], references: [id], onDelete: Cascade)
 
   @@unique([hallId, bedNumber])
@@ -635,11 +637,31 @@ model ParishArrival {
   checkedInByUserId String
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  additionalMaleDelegates   Int @default(0)
+  additionalFemaleDelegates Int @default(0)
   checkedInBy       User      @relation(fields: [checkedInByUserId], references: [id])
   event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   parish            Parish    @relation(fields: [parishId], references: [id], onDelete: Cascade)
+  additionalDelegates ArrivalExtraDelegate[]
 
   @@unique([eventId, parishId])
+}
+
+model ArrivalExtraDelegate {
+  id                String        @id @default(uuid())
+  parishArrivalId   String
+  bedId             String        @unique
+  gender            Gender
+  delegatePosition  Int
+  allocatedByUserId String
+  allocatedAt       DateTime      @default(now())
+  parishArrival     ParishArrival @relation(fields: [parishArrivalId], references: [id], onDelete: Cascade)
+  bed               Bed           @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  allocatedBy       User          @relation(fields: [allocatedByUserId], references: [id])
+
+  @@unique([parishArrivalId, gender, delegatePosition])
+  @@index([parishArrivalId])
+  @@index([allocatedByUserId])
 }
 
 model IncomeRecord {

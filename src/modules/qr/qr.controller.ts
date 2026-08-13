@@ -69,7 +69,9 @@ export async function confirmParishArrival(
     const result =
       await qrService.confirmParishArrival(
         req.body.token,
-        req.user!.userId
+        req.user!.userId,
+        Number(req.body.additionalMaleDelegates ?? 0),
+        Number(req.body.additionalFemaleDelegates ?? 0)
       );
 
     return res.json(result);

@@ -19,6 +19,7 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
     manualRegisteredParishes,
     manualDelegateAggregate,
     manualGenderAggregate,
+    arrivalExtraAggregate,
   ] = await Promise.all([
     prisma.parishAccount.count({
       where: {
@@ -93,6 +94,10 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
         femaleDelegates: true,
       },
     }),
+    prisma.parishArrival.aggregate({
+      where: { eventId: event.id, arrived: true },
+      _sum: { additionalMaleDelegates: true, additionalFemaleDelegates: true },
+    }),
   ]);
 
   const arrivedParishes = await prisma.parishArrival.count({
@@ -152,6 +157,9 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
   const manualFemaleDelegates = Number(
     manualGenderAggregate._sum.femaleDelegates ?? 0
   );
+  const arrivalExtraMale = Number(arrivalExtraAggregate._sum.additionalMaleDelegates ?? 0);
+  const arrivalExtraFemale = Number(arrivalExtraAggregate._sum.additionalFemaleDelegates ?? 0);
+  const arrivalExtraDelegates = arrivalExtraMale + arrivalExtraFemale;
 
   return {
     event: {
@@ -174,12 +182,12 @@ export async function getDashboard(): Promise<AdminDashboardResponse> {
     },
 
     delegates: {
-      total: registeredDelegates,
-      male: maleDelegates + manualMaleDelegates,
-      female: femaleDelegates + manualFemaleDelegates,
+      total: registeredDelegates + arrivalExtraDelegates,
+      male: maleDelegates + manualMaleDelegates + arrivalExtraMale,
+      female: femaleDelegates + manualFemaleDelegates + arrivalExtraFemale,
 
       // Breakdown
-      onlineDelegates: totalDelegates,
+      onlineDelegates: totalDelegates + arrivalExtraDelegates,
       manualDelegates,
     },
 

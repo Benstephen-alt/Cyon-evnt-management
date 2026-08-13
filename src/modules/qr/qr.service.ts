@@ -117,7 +117,9 @@ export async function scanParishQr(token: string) {
 
 export async function confirmParishArrival(
   token: string,
-  checkedInByUserId: string
+  checkedInByUserId: string,
+  additionalMaleDelegates = 0,
+  additionalFemaleDelegates = 0
 ) {
   const payload = verifyQrToken(token) as {
     type: string;
@@ -141,7 +143,9 @@ export async function confirmParishArrival(
 
   return parishArrivalService.markParishArrived(
     parish.id,
-    checkedInByUserId
+    checkedInByUserId,
+    additionalMaleDelegates,
+    additionalFemaleDelegates
   );
 }
 

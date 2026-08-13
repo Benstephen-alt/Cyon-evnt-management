@@ -358,6 +358,11 @@ export async function resetParishCheckIn(
   const parishId = account.parishId;
 
   return prisma.$transaction(async (tx) => {
+    const extraAllocations = await tx.arrivalExtraDelegate.findMany({
+      where: { parishArrival: { parishId, eventId: event.id } },
+      select: { bedId: true },
+    });
+    const extraBedIds = extraAllocations.map((item) => item.bedId);
     const delegates = await tx.delegate.findMany({
       where: {
         parishId,
@@ -386,6 +391,11 @@ export async function resetParishCheckIn(
       });
     }
 
+    if (extraBedIds.length > 0) {
+      await tx.arrivalExtraDelegate.deleteMany({ where: { bedId: { in: extraBedIds } } });
+      await tx.bed.updateMany({ where: { id: { in: extraBedIds } }, data: { isOccupied: false } });
+    }
+
     const resetDelegates = await tx.delegate.updateMany({
       where: {
         parishId,
@@ -410,8 +420,8 @@ export async function resetParishCheckIn(
       message: `${account.parish.parishName} check-in reset successfully.`,
       data: {
         delegatesReset: resetDelegates.count,
-        accommodationsRemoved: accommodationIds.length,
-        bedsReleased: bedIds.length,
+        accommodationsRemoved: accommodationIds.length + extraBedIds.length,
+        bedsReleased: bedIds.length + extraBedIds.length,
         parishArrivalsRemoved: removedArrivals.count,
       },
     };

@@ -191,6 +191,13 @@ const account = await prisma.parishAccount.findFirst({
     },
   });
 
+  const arrival = await prisma.parishArrival.findFirst({
+    where: { parishId, eventId: event.id, arrived: true },
+    select: { additionalMaleDelegates: true, additionalFemaleDelegates: true },
+  });
+  const additionalMale = arrival?.additionalMaleDelegates ?? 0;
+  const additionalFemale = arrival?.additionalFemaleDelegates ?? 0;
+
   const checkedIn = delegates.filter(
   (delegate) => delegate.isCheckedIn
 ).length;
@@ -206,17 +213,17 @@ const outstanding = delegates.length - checkedIn;
     account?.paymentStatus === "APPROVED" ||
     account?.approvedAt !== null,
 
-  totalDelegates: delegates.length,
+  totalDelegates: delegates.length + additionalMale + additionalFemale,
 
   maleDelegates: delegates.filter(
     (delegate) => delegate.gender === "MALE"
-  ).length,
+  ).length + additionalMale,
 
   femaleDelegates: delegates.filter(
     (delegate) => delegate.gender === "FEMALE"
-  ).length,
+  ).length + additionalFemale,
 
-  checkedIn,
+  checkedIn: checkedIn + additionalMale + additionalFemale,
 
   outstanding,
 
