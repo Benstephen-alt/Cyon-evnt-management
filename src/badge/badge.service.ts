@@ -20,11 +20,29 @@ export async function generateBadge(delegateId: string) {
     },
     include: {
         event: true,
+        parish: {
+          select: { parishName: true },
+        },
     },
 });
 
   if (!delegate) {
     throw new Error("Delegate not found.");
+  }
+
+  const fullName = delegate.fullName?.trim();
+  const parishName = delegate.parishName?.trim() || delegate.parish.parishName?.trim();
+  const delegateNumber = delegate.delegateNumber?.trim();
+
+  const missingFields = [
+    !fullName && "name",
+    !parishName && "parish",
+    !delegateNumber && "delegate number",
+  ].filter(Boolean);
+  if (missingFields.length) {
+    throw new Error(
+      `Cannot generate badge for delegate ${delegateNumber || delegate.id}: missing ${missingFields.join(", ")}.`
+    );
   }
 
 
@@ -33,7 +51,7 @@ export async function generateBadge(delegateId: string) {
   // Generate QR Code
   const token = generateQrToken({
   type: "DELEGATE",
-  delegateNumber: delegate.delegateNumber,
+  delegateNumber,
   eventYear: delegate.event.year,
 });
 
@@ -46,21 +64,21 @@ const qrBuffer = await QRCode.toBuffer(token, {
   // Create SVG text
   const [nameSvg, parishSvg, idSvg] = await Promise.all([
   createSvgText({
-    text: delegate.fullName,
+    text: fullName,
     width: BADGE_CONFIG.name.width,
     fontSize: BADGE_CONFIG.name.fontSize,
     color: BADGE_CONFIG.name.color,
   }),
 
   createSvgText({
-    text: wrapParishName(delegate.parishName),
+    text: wrapParishName(parishName),
     width: BADGE_CONFIG.parish.width,
     fontSize: BADGE_CONFIG.parish.fontSize,
     color: BADGE_CONFIG.parish.color,
   }),
 
   createSvgText({
-    text: delegate.delegateNumber,
+    text: delegateNumber,
     width: BADGE_CONFIG.delegateId.width,
     fontSize: BADGE_CONFIG.delegateId.fontSize,
     color: BADGE_CONFIG.delegateId.color,
@@ -281,7 +299,7 @@ export async function downloadDeaneryBadges(deaneryId: string) {
           delegates: {
             where: { eventId: event.id },
             orderBy: { delegateNumber: "asc" },
-            select: { id: true, delegateNumber: true },
+            select: { id: true, delegateNumber: true, fullName: true },
           },
         },
       },
@@ -305,7 +323,15 @@ export async function downloadDeaneryBadges(deaneryId: string) {
     const parishFolder = zipSafeName(parish.parishName);
 
     for (const delegate of parish.delegates) {
-      const badge = await generateBadge(delegate.id);
+      let badge: Buffer;
+      try {
+        badge = await generateBadge(delegate.id);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "Unknown badge generation error.";
+        throw new Error(
+          `Badge generation failed for ${delegate.delegateNumber?.trim() || delegate.id} (${delegate.fullName?.trim() || "unnamed delegate"}) in ${parish.parishName}: ${reason}`
+        );
+      }
       archive.append(badge, {
         name: `${parishFolder}/${zipSafeName(delegate.delegateNumber)}.png`,
       });

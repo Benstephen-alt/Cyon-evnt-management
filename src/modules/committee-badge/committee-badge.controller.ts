@@ -164,3 +164,19 @@ export async function downloadCommitteeBadge(
     next(error);
   }
 }
+
+export async function downloadAllCommitteeBadges(
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await committeeBadgeService.downloadAllCommitteeBadges();
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${result.fileName}"`);
+    result.stream.on("error", next);
+    return result.stream.pipe(res);
+  } catch (error) {
+    next(error);
+  }
+}

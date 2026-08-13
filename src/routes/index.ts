@@ -24,6 +24,7 @@ import { committeeBadgeRoutes } from "../modules/committee-badge";
 import notificationRoutes from "../modules/notifications/notification.routes";
 import feedingRoutes from "../modules/feeding/feeding.routes";
 import superAdminRoutes from "../modules/super-admin/super-admin.routes";
+import privateDelegateRoutes from "../modules/private-delegate/private-delegate.routes";
 
 
 const router = Router();
@@ -153,6 +154,7 @@ router.use("/committees", committeeRoutes);
 router.use("/committee-badges", committeeBadgeRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/feeding", feedingRoutes);
+router.use("/private-delegates", privateDelegateRoutes);
 
 router.use("/reports", reportsRoutes);
 

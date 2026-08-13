@@ -212,18 +212,44 @@ export async function scanDelegateQr(
     type: string;
     delegateNumber: string;
     eventYear: number;
+    privateDelegateId?: string;
   };
-
-  if (payload.type !== "DELEGATE") {
-    throw new Error("Invalid delegate QR code.");
-  }
 
   const event = await getActiveEvent();
 
   if (payload.eventYear !== event.year) {
-    throw new Error(
-      "QR code belongs to a different event."
-    );
+    throw new Error("QR code belongs to a different event.");
+  }
+
+  if (payload.type === "PRIVATE_DELEGATE") {
+    if (!payload.privateDelegateId) throw new Error("Invalid private delegate QR code.");
+    const privateDelegate = await prisma.privateDelegate.findFirst({
+      where: { id: payload.privateDelegateId, eventId: event.id, delegateNumber: payload.delegateNumber },
+    });
+    if (!privateDelegate) throw new Error("Private delegate not found.");
+    return {
+      success: true,
+      message: "Private delegate verified successfully.",
+      data: {
+        delegate: {
+          id: privateDelegate.id,
+          delegateType: "PRIVATE",
+          delegateNumber: privateDelegate.delegateNumber,
+          fullName: privateDelegate.fullName,
+          gender: privateDelegate.gender ?? "NOT SPECIFIED",
+          phoneNumber: privateDelegate.phoneNumber ?? "Not provided",
+          photoUrl: "",
+          parish: "Private Delegate",
+          deanery: "CYON Nsukka Diocese",
+        },
+        accommodation: null,
+        status: { registered: true, accommodated: false, parishArrived: true, checkedIn: true, outside: false, canGoOut: false, canReturn: false },
+      },
+    };
+  }
+
+  if (payload.type !== "DELEGATE") {
+    throw new Error("Invalid delegate QR code.");
   }
 
   const delegate = await prisma.delegate.findUnique({

@@ -10,6 +10,8 @@ import {
   CreateCommitteeBadgeDto,
   UpdateCommitteeBadgeDto,
 } from "./committee-badge.types";
+import { PassThrough } from "stream";
+const archiver = require("archiver");
 
 const badgeInclude = {
   committee: {
@@ -463,4 +465,22 @@ export async function generateCommitteeBadgeImage(
     ])
     .png()
     .toBuffer();
+}
+
+export async function downloadAllCommitteeBadges() {
+  const badges = await listCommitteeBadges();
+  if (!badges.length) {
+    throw new AppError(404, "No committee badges found for the active event.", "NO_COMMITTEE_BADGES");
+  }
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  const stream = new PassThrough();
+  archive.on("error", (error: Error) => stream.destroy(error));
+  archive.pipe(stream);
+  for (const badge of badges) {
+    archive.append(await generateCommitteeBadgeImage(badge.id), {
+      name: `${badge.badgeNumber}.png`,
+    });
+  }
+  void archive.finalize();
+  return { stream, fileName: "Committee-Badges.zip", count: badges.length };
 }

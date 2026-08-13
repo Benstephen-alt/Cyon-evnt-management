@@ -13,6 +13,7 @@ router.use(
 
 router.get("/options", controller.getBadgeOptions);
 router.get("/", controller.listCommitteeBadges);
+router.get("/download-all", controller.downloadAllCommitteeBadges);
 router.post(
   "/",
   uploadCommitteePhoto.single("photo"),

@@ -1,0 +1,11 @@
+import { Router } from "express";
+import { authenticate } from "@/shared/utils/middlewares/auth.middleware";
+import { authorize } from "@/shared/utils/middlewares/role.middleware";
+import * as controller from "./private-delegate.controller";
+const router = Router();
+router.use(authenticate, authorize("SUPER_ADMIN"));
+router.get("/", controller.list); router.post("/", controller.create);
+router.get("/download-all", controller.downloadAll);
+router.get("/:id", controller.getOne); router.delete("/:id", controller.remove);
+router.get("/:id/image", controller.image); router.get("/:id/download", controller.download);
+export default router;
