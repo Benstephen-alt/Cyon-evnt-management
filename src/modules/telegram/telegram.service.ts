@@ -122,7 +122,7 @@ export async function sendFeedingRequestTelegramNotification(
     `<b>Name:</b> ${escapeHtml(data.fullName)}`,
     `<b>Committee:</b> ${escapeHtml(data.committeeName)}`,
     `<b>Bank:</b> ${escapeHtml(data.bankName)}`,
-    `<b>Request today:</b> ${data.requestNumberToday} of 2`,
+    `<b>Request today:</b> ${data.requestNumberToday} of 4`,
     `<b>Request ID:</b> ${escapeHtml(data.requestId)}`,
     "",
     "Open the admin feeding page to approve or reject this request.",
