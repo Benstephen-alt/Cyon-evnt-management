@@ -17,7 +17,8 @@ const requestInclude = {
 
 const FEEDING_REQUEST_AMOUNT = 1_000;
 const SECURITY_FEEDING_REQUEST_AMOUNT = 13_000;
-const DAILY_FEEDING_REQUEST_LIMIT = 4;
+const REGULAR_FEEDING_REQUEST_LIMIT = 4;
+const SECURITY_FEEDING_REQUEST_LIMIT = 4;
 
 async function getFeedingCommittee(eventId: string) {
   const committee = await prisma.committee.findFirst({
@@ -86,7 +87,7 @@ export async function getCommitteeDashboard(userId: string) {
         .filter((name) => name.toLowerCase() !== "feeding"))],
       requests,
       ownRequestsToday: ownCount,
-      remainingRequestsToday: Math.max(0, 2 - ownCount),
+      remainingRequestsToday: Math.max(0, REGULAR_FEEDING_REQUEST_LIMIT - ownCount),
     },
   };
 }
@@ -125,8 +126,8 @@ export async function requestFeeding(userId: string) {
   const count = await prisma.feedingRequest.count({
     where: { feedingProfileId: member.feedingProfile.id, isSecurityCollective: false, requestedAt: { gte: start, lt: end } },
   });
-  if (count >= DAILY_FEEDING_REQUEST_LIMIT) {
-    throw new AppError(429, `You have reached the limit of ${DAILY_FEEDING_REQUEST_LIMIT} feeding requests for today.`, "DAILY_FEEDING_LIMIT_REACHED");
+  if (count >= REGULAR_FEEDING_REQUEST_LIMIT) {
+    throw new AppError(429, `You have reached the limit of ${REGULAR_FEEDING_REQUEST_LIMIT} feeding requests for today.`, "DAILY_FEEDING_LIMIT_REACHED");
   }
   const request = await prisma.feedingRequest.create({
     data: { eventId: event.id, feedingProfileId: member.feedingProfile.id, amount: FEEDING_REQUEST_AMOUNT },
@@ -140,6 +141,7 @@ export async function requestFeeding(userId: string) {
       committeeName: member.feedingProfile.committeeName,
       bankName: member.feedingProfile.bankName,
       requestNumberToday: count + 1,
+      dailyLimit: REGULAR_FEEDING_REQUEST_LIMIT,
     });
   } catch {
     telegramNotified = false;
@@ -166,8 +168,8 @@ export async function requestSecurityFeeding(userId: string) {
       requestedAt: { gte: start, lt: end },
     },
   });
-  if (requestCount >= DAILY_FEEDING_REQUEST_LIMIT) {
-    throw new AppError(409, `Security has reached its limit of ${DAILY_FEEDING_REQUEST_LIMIT} feeding requests for today.`, "SECURITY_FEEDING_DAILY_LIMIT_REACHED");
+  if (requestCount >= SECURITY_FEEDING_REQUEST_LIMIT) {
+    throw new AppError(409, `Security has reached its limit of ${SECURITY_FEEDING_REQUEST_LIMIT} feeding requests for today.`, "SECURITY_FEEDING_DAILY_LIMIT_REACHED");
   }
   const request = await prisma.feedingRequest.create({
     data: {
@@ -186,6 +188,7 @@ export async function requestSecurityFeeding(userId: string) {
       committeeName: "Security Committee (Collective ₦13,000)",
       bankName: member.feedingProfile.bankName,
       requestNumberToday: requestCount + 1,
+      dailyLimit: SECURITY_FEEDING_REQUEST_LIMIT,
     });
   } catch {
     telegramNotified = false;
