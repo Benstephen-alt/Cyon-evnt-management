@@ -7,6 +7,16 @@ export async function createCommitteeAssignment(
   assignedByUserId: string
 ) {
   const event = await getActiveEvent();
+  const committeeMemberIds = Array.from(
+    new Set([
+      ...(Array.isArray(data.committeeMemberIds) ? data.committeeMemberIds : []),
+      ...(data.committeeMemberId ? [data.committeeMemberId] : []),
+    ].filter(Boolean))
+  );
+
+  if (!committeeMemberIds.length) {
+    throw new Error("Select at least one committee member.");
+  }
 
   const committee = await prisma.committee.findFirst({
     where: {
@@ -19,54 +29,38 @@ export async function createCommitteeAssignment(
     throw new Error("Committee not found.");
   }
 
-  const member = await prisma.committeeMember.findUnique({
-    where: {
-      id: data.committeeMemberId,
-    },
-    include: {
-      user: true,
-    },
+  const members = await prisma.committeeMember.findMany({
+    where: { id: { in: committeeMemberIds } },
+  });
+  if (members.length !== committeeMemberIds.length) {
+    throw new Error("One or more selected committee members were not found.");
+  }
+
+  const existingAssignments = await prisma.committeeAssignment.findMany({
+    where: { committeeId: data.committeeId, committeeMemberId: { in: committeeMemberIds } },
+    select: { committeeMemberId: true },
+  });
+  if (existingAssignments.length) {
+    throw new Error("One or more selected members are already assigned to this committee.");
+  }
+
+  await prisma.committeeAssignment.createMany({
+    data: committeeMemberIds.map((committeeMemberId) => ({
+        committeeId: data.committeeId,
+        committeeMemberId,
+        assignedByUserId,
+    })),
   });
 
-  if (!member) {
-    throw new Error("Committee member not found.");
-  }
-
-  const existingAssignment =
-    await prisma.committeeAssignment.findFirst({
-      where: {
-        committeeId: data.committeeId,
-        committeeMemberId: data.committeeMemberId,
-      },
-    });
-
-  if (existingAssignment) {
-    throw new Error(
-      "Member is already assigned to this committee."
-    );
-  }
-
-  const assignment =
-    await prisma.committeeAssignment.create({
-      data: {
-        committeeId: data.committeeId,
-        committeeMemberId: data.committeeMemberId,
-        assignedByUserId,
-      },
-      include: {
-        committee: true,
-        committeeMember: {
-          include: {
-            user: true,
-          },
-        },
-      },
-    });
+  const assignments = await prisma.committeeAssignment.findMany({
+    where: { committeeId: data.committeeId, committeeMemberId: { in: committeeMemberIds } },
+    include: { committee: true, committeeMember: { include: { user: true } } },
+  });
 
   return {
     success: true,
-    message: "Committee assignment created successfully.",
-    data: assignment,
+    message: `${assignments.length} committee member${assignments.length === 1 ? "" : "s"} assigned successfully.`,
+    data: assignments,
   };
 }
 

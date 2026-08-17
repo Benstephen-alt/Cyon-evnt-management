@@ -71,6 +71,41 @@ export async function createCommitteeMember(
 return member;
 }
 
+export async function createCommitteeMembers(userIds: string[]) {
+  const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
+  if (!uniqueUserIds.length) throw new Error("Select at least one user.");
+
+  return prisma.$transaction(async (tx) => {
+    const users = await tx.user.findMany({ where: { id: { in: uniqueUserIds } } });
+    if (users.length !== uniqueUserIds.length) throw new Error("One or more selected users were not found.");
+
+    const existing = await tx.committeeMember.findMany({
+      where: { userId: { in: uniqueUserIds } }, select: { userId: true },
+    });
+    if (existing.length) throw new Error("One or more selected users are already committee members.");
+
+    const feedingCommittees = await tx.committee.findMany({
+      where: { committeeName: { equals: "Feeding", mode: "insensitive" }, event: { isActive: true } },
+      select: { id: true },
+    });
+    const created = [];
+    for (const user of users) {
+      const member = await tx.committeeMember.create({ data: { userId: user.id }, include: { user: true } });
+      if (feedingCommittees.length) {
+        await tx.committeeAssignment.createMany({
+          data: feedingCommittees.map((committee) => ({ committeeId: committee.id, committeeMemberId: member.id })),
+          skipDuplicates: true,
+        });
+      }
+      if (user.role === "ADMIN") {
+        await tx.admin.updateMany({ where: { userId: user.id }, data: { adminPortalAccess: false } });
+      }
+      created.push(member);
+    }
+    return created;
+  });
+}
+
 export async function getCommitteeMembers() {
   const members = await prisma.committeeMember.findMany({
     include: {

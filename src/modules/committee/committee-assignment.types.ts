@@ -1,7 +1,7 @@
 export interface CreateCommitteeAssignmentDto {
   committeeId: string;
-
-  committeeMemberId: string;
+  committeeMemberId?: string;
+  committeeMemberIds?: string[];
 }
 
 export interface UpdateCommitteeAssignmentDto {

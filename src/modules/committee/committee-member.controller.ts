@@ -6,15 +6,17 @@ export async function createCommitteeMember(
   res: Response
 ) {
   try {
-    const member =
-      await committeeMemberService.createCommitteeMember(
-        req.body
-      );
+    const userIds = Array.isArray(req.body.userIds)
+      ? req.body.userIds
+      : req.body.userId
+        ? [req.body.userId]
+        : [];
+    const members = await committeeMemberService.createCommitteeMembers(userIds);
 
     return res.status(201).json({
       success: true,
-      message: "Committee member created successfully.",
-      data: member,
+      message: `${members.length} committee member${members.length === 1 ? "" : "s"} created successfully.`,
+      data: members.length === 1 ? members[0] : members,
     });
   } catch (error: any) {
     return res.status(400).json({

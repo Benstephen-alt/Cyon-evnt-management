@@ -312,6 +312,8 @@ model FeedingRequest {
   eventId          String
   feedingProfileId String
   status           FeedingRequestStatus @default(PENDING)
+  amount           Int                  @default(1000)
+  isSecurityCollective Boolean           @default(false)
   rejectionReason  String?
   requestedAt      DateTime             @default(now())
   reviewedAt       DateTime?
@@ -324,6 +326,7 @@ model FeedingRequest {
   @@index([eventId, requestedAt])
   @@index([feedingProfileId, requestedAt])
   @@index([eventId, status])
+  @@index([eventId, isSecurityCollective, requestedAt])
 }
 
 model CommitteeBadge {

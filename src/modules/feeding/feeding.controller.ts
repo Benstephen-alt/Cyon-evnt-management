@@ -11,6 +11,9 @@ export async function createProfile(req: Request, res: Response, next: NextFunct
 export async function createRequest(req: Request, res: Response, next: NextFunction) {
   try { res.status(201).json(await service.requestFeeding(req.user!.userId)); } catch (error) { next(error); }
 }
+export async function createSecurityRequest(req: Request, res: Response, next: NextFunction) {
+  try { res.status(201).json(await service.requestSecurityFeeding(req.user!.userId)); } catch (error) { next(error); }
+}
 export async function adminDashboard(_req: Request, res: Response, next: NextFunction) {
   try { res.json(await service.getAdminDashboard()); } catch (error) { next(error); }
 }

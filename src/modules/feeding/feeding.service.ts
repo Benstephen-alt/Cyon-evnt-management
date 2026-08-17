@@ -16,6 +16,7 @@ const requestInclude = {
 } as const;
 
 const FEEDING_REQUEST_AMOUNT = 1_000;
+const SECURITY_FEEDING_REQUEST_AMOUNT = 13_000;
 
 async function getFeedingCommittee(eventId: string) {
   const committee = await prisma.committee.findFirst({
@@ -72,7 +73,7 @@ export async function getCommitteeDashboard(userId: string) {
     orderBy: { requestedAt: "desc" },
   });
   const ownCount = member.feedingProfile
-    ? requests.filter((item) => item.feedingProfileId === member.feedingProfile!.id).length
+    ? requests.filter((item) => item.feedingProfileId === member.feedingProfile!.id && !item.isSecurityCollective).length
     : 0;
   return {
     success: true,
@@ -113,18 +114,21 @@ export async function createProfile(userId: string, input: {
 
 export async function requestFeeding(userId: string) {
   const [member, event] = await Promise.all([getMember(userId), getActiveEvent()]);
+  if (member.assignments.some((assignment) => assignment.committee.committeeName.toLowerCase() === "security")) {
+    throw new AppError(400, "Security feeding is requested collectively from the Security dashboard.", "USE_SECURITY_COLLECTIVE_REQUEST");
+  }
   if (!member.feedingProfile) {
     throw new AppError(400, "Submit your feeding details before requesting feeding.", "FEEDING_PROFILE_REQUIRED");
   }
   const { start, end } = lagosDayRange();
   const count = await prisma.feedingRequest.count({
-    where: { feedingProfileId: member.feedingProfile.id, requestedAt: { gte: start, lt: end } },
+    where: { feedingProfileId: member.feedingProfile.id, isSecurityCollective: false, requestedAt: { gte: start, lt: end } },
   });
   if (count >= 2) {
     throw new AppError(429, "You have reached the limit of 2 feeding requests for today.", "DAILY_FEEDING_LIMIT_REACHED");
   }
   const request = await prisma.feedingRequest.create({
-    data: { eventId: event.id, feedingProfileId: member.feedingProfile.id },
+    data: { eventId: event.id, feedingProfileId: member.feedingProfile.id, amount: FEEDING_REQUEST_AMOUNT },
     include: requestInclude,
   });
   let telegramNotified = true;
@@ -140,6 +144,52 @@ export async function requestFeeding(userId: string) {
     telegramNotified = false;
   }
   return { success: true, message: "Feeding request submitted successfully.", telegramNotified, data: request };
+}
+
+export async function requestSecurityFeeding(userId: string) {
+  const [member, event] = await Promise.all([getMember(userId), getActiveEvent()]);
+  const belongsToSecurity = member.assignments.some(
+    (assignment) => assignment.committee.committeeName.toLowerCase() === "security"
+  );
+  if (!belongsToSecurity) {
+    throw new AppError(403, "Only an active Security committee member can submit this request.", "SECURITY_COMMITTEE_REQUIRED");
+  }
+  if (!member.feedingProfile) {
+    throw new AppError(400, "Submit your feeding payment details before requesting Security feeding funds.", "FEEDING_PROFILE_REQUIRED");
+  }
+  const { start, end } = lagosDayRange();
+  const requestCount = await prisma.feedingRequest.count({
+    where: {
+      eventId: event.id,
+      isSecurityCollective: true,
+      requestedAt: { gte: start, lt: end },
+    },
+  });
+  if (requestCount >= 2) {
+    throw new AppError(409, "Security has reached its limit of 2 feeding requests for today.", "SECURITY_FEEDING_DAILY_LIMIT_REACHED");
+  }
+  const request = await prisma.feedingRequest.create({
+    data: {
+      eventId: event.id,
+      feedingProfileId: member.feedingProfile.id,
+      amount: SECURITY_FEEDING_REQUEST_AMOUNT,
+      isSecurityCollective: true,
+    },
+    include: requestInclude,
+  });
+  let telegramNotified = true;
+  try {
+    await sendFeedingRequestTelegramNotification({
+      requestId: request.id,
+      fullName: member.feedingProfile.fullName,
+      committeeName: "Security Committee (Collective ₦13,000)",
+      bankName: member.feedingProfile.bankName,
+      requestNumberToday: requestCount + 1,
+    });
+  } catch {
+    telegramNotified = false;
+  }
+  return { success: true, message: "Security collective feeding request submitted successfully.", telegramNotified, data: request };
 }
 
 export async function getAdminDashboard() {
@@ -234,7 +284,8 @@ export async function reviewRequest(requestId: string, reviewerUserId: string,
         }),
       ]);
       const balance = Number(released._sum.amount ?? 0) - Number(spent._sum.amount ?? 0);
-      if (balance < FEEDING_REQUEST_AMOUNT) {
+      const requestAmount = existing.amount;
+      if (balance < requestAmount) {
         throw new AppError(
           400,
           `Insufficient Feeding committee funds. Available balance is ₦${balance.toLocaleString()}.`,
@@ -247,10 +298,12 @@ export async function reviewRequest(requestId: string, reviewerUserId: string,
           committeeId: committee.id,
           committeeMemberId: existing.feedingProfile.committeeMemberId,
           category: ExpenseCategory.FOOD,
-          amount: FEEDING_REQUEST_AMOUNT,
-          description: `Feeding allowance approved for ${existing.feedingProfile.fullName}`,
+          amount: requestAmount,
+          description: existing.isSecurityCollective
+            ? "Security committee collective feeding allowance"
+            : `Feeding allowance approved for ${existing.feedingProfile.fullName}`,
           receiptType: ReceiptType.CASH,
-          expenseName: "Approved feeding request",
+          expenseName: existing.isSecurityCollective ? "Approved Security feeding request" : "Approved feeding request",
           feedingRequestId: existing.id,
         },
       });
