@@ -28,6 +28,12 @@ export async function reviewRequest(req: Request, res: Response, next: NextFunct
   } catch (error) { next(error); }
 }
 
+export async function recordCashExpense(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.status(201).json(await service.recordCashExpense(req.user!.userId, req.body));
+  } catch (error) { next(error); }
+}
+
 export async function clearRequestLogs(_req: Request, res: Response, next: NextFunction) {
   try { res.json(await service.clearRequestLogs()); } catch (error) { next(error); }
 }

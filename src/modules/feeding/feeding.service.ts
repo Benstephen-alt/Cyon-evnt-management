@@ -200,7 +200,7 @@ export async function getAdminDashboard() {
   const event = await getActiveEvent();
   const feedingCommittee = await getFeedingCommittee(event.id);
   const { start, end } = lagosDayRange();
-  const [profiles, requests, activeRequests, released, spent, fundReleases] = await Promise.all([
+  const [profiles, requests, activeRequests, released, spent, fundReleases, cashExpenses] = await Promise.all([
     prisma.feedingProfile.findMany({ select: profileSelect, orderBy: { createdAt: "desc" } }),
     prisma.feedingRequest.findMany({
       where: { eventId: event.id, requestedAt: { gte: start, lt: end } },
@@ -223,6 +223,22 @@ export async function getAdminDashboard() {
       },
       orderBy: { releasedAt: "desc" },
     }),
+    prisma.expense.findMany({
+      where: {
+        eventId: event.id,
+        committeeId: feedingCommittee.id,
+        receiptType: ReceiptType.CASH,
+        feedingRequestId: null,
+      },
+      select: {
+        id: true,
+        expenseName: true,
+        description: true,
+        amount: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
   const totalReleased = Number(released._sum.amount ?? 0);
   const totalExpenses = Number(spent._sum.amount ?? 0);
@@ -243,8 +259,91 @@ export async function getAdminDashboard() {
           ...release,
           amount: Number(release.amount),
         })),
+        cashExpenses: cashExpenses.map((expense) => ({
+          ...expense,
+          amount: Number(expense.amount),
+        })),
       },
     },
+  };
+}
+
+export async function recordCashExpense(
+  adminUserId: string,
+  input: { amount?: number | string; description?: string }
+) {
+  const amount = Number(input.amount);
+  const description = String(input.description ?? "").trim();
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new AppError(400, "Enter a valid cash expense amount greater than zero.", "VALIDATION_ERROR");
+  }
+
+  const event = await getActiveEvent();
+  const committee = await getFeedingCommittee(event.id);
+
+  const expense = await prisma.$transaction(async (tx) => {
+    const [released, spent, adminMember] = await Promise.all([
+      tx.fundRelease.aggregate({
+        where: { eventId: event.id, committeeId: committee.id },
+        _sum: { amount: true },
+      }),
+      tx.expense.aggregate({
+        where: { eventId: event.id, committeeId: committee.id },
+        _sum: { amount: true },
+      }),
+      tx.committeeMember.findUnique({
+        where: { userId: adminUserId },
+        select: { id: true },
+      }),
+    ]);
+
+    const balance = Number(released._sum.amount ?? 0) - Number(spent._sum.amount ?? 0);
+    if (amount > balance) {
+      throw new AppError(
+        400,
+        `Insufficient Feeding committee funds. Available balance is ₦${balance.toLocaleString()}.`,
+        "INSUFFICIENT_FEEDING_FUNDS"
+      );
+    }
+
+    const assignedMember = adminMember ?? await tx.committeeAssignment.findFirst({
+      where: { committeeId: committee.id, isActive: true, committeeMember: { isActive: true } },
+      select: { committeeMember: { select: { id: true } } },
+    }).then((assignment) => assignment?.committeeMember ?? null);
+
+    if (!assignedMember) {
+      throw new AppError(
+        400,
+        "Assign at least one active member to the Feeding committee before recording a cash expense.",
+        "FEEDING_MEMBER_REQUIRED"
+      );
+    }
+
+    return tx.expense.create({
+      data: {
+        eventId: event.id,
+        committeeId: committee.id,
+        committeeMemberId: assignedMember.id,
+        category: ExpenseCategory.FOOD,
+        amount,
+        description: description || "Cash feeding expense recorded by an administrator.",
+        receiptType: ReceiptType.CASH,
+        expenseName: "Feeding cash expense",
+      },
+      select: {
+        id: true,
+        expenseName: true,
+        description: true,
+        amount: true,
+        createdAt: true,
+      },
+    });
+  }, { isolationLevel: "Serializable" });
+
+  return {
+    success: true,
+    message: "Feeding cash expense recorded successfully.",
+    data: { ...expense, amount: Number(expense.amount) },
   };
 }
 
